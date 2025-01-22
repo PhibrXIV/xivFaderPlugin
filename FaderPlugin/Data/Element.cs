@@ -1,6 +1,10 @@
-﻿namespace FaderPlugin.Config;
+﻿using System;
+using faderPlugin.Resources;
 
-public enum Element {
+namespace FaderPlugin.Data;
+
+public enum Element
+{
     Unknown,
 
     Hotbar1,
@@ -42,44 +46,56 @@ public enum Element {
     StatusOther,
 }
 
-public static class ElementUtil {
+public static class ElementUtil
+{
     public static string GetElementName(Element element)
     {
         return element switch
         {
-            Element.Hotbar1 => "Hotbar 1",
-            Element.Hotbar2 => "Hotbar 2",
-            Element.Hotbar3 => "Hotbar 3",
-            Element.Hotbar4 => "Hotbar 4",
-            Element.Hotbar5 => "Hotbar 5",
-            Element.Hotbar6 => "Hotbar 6",
-            Element.Hotbar7 => "Hotbar 7",
-            Element.Hotbar8 => "Hotbar 8",
-            Element.Hotbar9 => "Hotbar 9",
-            Element.Hotbar10 => "Hotbar 10",
-            Element.CrossHotbar => "Cross Hotbar",
-            Element.PetHotbar => "Pet Hotbar",
-            Element.ContextActionHotbar => "Context Action Hotbar",
-            Element.CastBar => "Cast Bar",
-            Element.ExperienceBar => "Experience Bar",
-            Element.InventoryGrid => "Inventory Grid",
-            Element.ScenarioGuide => "Scenario Guide",
-            Element.IslekeepIndex => "Islekeep's Index",
-            Element.DutyList => "Duty List",
-            Element.ServerInfo => "Server Information",
-            Element.MainMenu => "Main Menu",
-            Element.TargetInfo => "Target Info",
-            Element.PartyList => "Party List",
-            Element.LimitBreak => "Limit Break",
-            Element.StatusEnhancements => "Status Enhancements",
-            Element.StatusEnfeeblements => "Status Enfeeblements",
-            Element.StatusOther => "Status Other",
-            _ => element.ToString()
+            Element.Hotbar1 => Language.ElementHotbar1,
+            Element.Hotbar2 => Language.ElementHotbar2,
+            Element.Hotbar3 => Language.ElementHotbar3,
+            Element.Hotbar4 => Language.ElementHotbar4,
+            Element.Hotbar5 => Language.ElementHotbar5,
+            Element.Hotbar6 => Language.ElementHotbar6,
+            Element.Hotbar7 => Language.ElementHotbar7,
+            Element.Hotbar8 => Language.ElementHotbar8,
+            Element.Hotbar9 => Language.ElementHotbar9,
+            Element.Hotbar10 => Language.ElementHotbar10,
+            Element.CrossHotbar => Language.ElementCrossHotbar,
+            Element.PetHotbar => Language.ElementPetHotbar,
+            Element.ContextActionHotbar => Language.ElementContextActionHotbar,
+            Element.CastBar => Language.ElementCastbar,
+            Element.ExperienceBar => Language.ElementExperienceBar,
+            Element.InventoryGrid => Language.ElementInventoryGrid,
+            Element.ScenarioGuide => Language.ElementScenarioGuide,
+            Element.IslekeepIndex => Language.ElementIslekeepIndex,
+            Element.DutyList => Language.ElementDutyList,
+            Element.ServerInfo => Language.ElementServerInformation,
+            Element.MainMenu => Language.ElementMainMenu,
+            Element.TargetInfo => Language.ElementTargetInfo,
+            Element.PartyList => Language.ElementPartyList,
+            Element.LimitBreak => Language.ElementLimitBreak,
+            Element.StatusEnhancements => Language.ElementStatusEnhancements,
+            Element.StatusEnfeeblements => Language.ElementStatusEnfeeblements,
+            Element.StatusOther => Language.ElementStatusOther,
+            Element.Unknown => Language.ElementUnknown,
+            Element.Job => Language.ElementJob,
+            Element.Currency => Language.ElementCurrency,
+            Element.QuestLog => Language.ElementQuestLog,
+            Element.Chat => Language.ElementChat,
+            Element.Minimap => Language.ElementMinimap,
+            Element.Nameplates => Language.ElementNameplate,
+            Element.Parameters => Language.ElementParameters,
+            Element.Status => Language.ElementStatus,
+            _ => throw new ArgumentOutOfRangeException(nameof(element), element, null)
         };
     }
 
-    public static string[] GetAddonName(Element element) {
-        return element switch {
+    public static string[] GetAddonName(Element element)
+    {
+        return element switch
+        {
             Element.Hotbar1 => ["_ActionBar"],
             Element.Hotbar2 => ["_ActionBar01"],
             Element.Hotbar3 => ["_ActionBar02"],
@@ -156,6 +172,34 @@ public static class ElementUtil {
             ],
             Element.Unknown => [],
             _ => [],
+        };
+    }
+
+    public static string TooltipForElement(this Element elementId)
+    {
+        return elementId switch
+        {
+            Element.Chat => Language.ElementTooltipChat,
+            Element.CrossHotbar => Language.ElementTooltipCrosshotbar,
+            Element.ContextActionHotbar => Language.ElementTooltipActionHotbar,
+            Element.PetHotbar => Language.ElementTooltipPetHotbar,
+            Element.Job => Language.ElementTooltipJob,
+            Element.Status => Language.ElementTooltipStatus,
+            Element.StatusEnfeeblements => Language.ElementTooltipStatusEnfeeblements,
+            Element.StatusEnhancements => Language.ElementTooltipStatusEnhancements,
+            Element.StatusOther => Language.ElementTooltipStatusOther,
+            _ => string.Empty,
+        };
+    }
+
+    public static bool ShouldIgnoreElement(this Element elementId)
+    {
+        return elementId switch
+        {
+            Element.QuestLog => true,
+            Element.Nameplates => true,
+            Element.Unknown => true,
+            _ => false,
         };
     }
 }

@@ -2,20 +2,23 @@
 using System.Collections.Generic;
 using Dalamud.Configuration;
 
-namespace FaderPlugin.Config;
+namespace FaderPlugin.Data;
 
-public class ConfigEntry {
+public class ConfigEntry
+{
     public State state { get; set; }
     public Setting setting { get; set; }
 
-    public ConfigEntry(State state, Setting setting) {
+    public ConfigEntry(State state, Setting setting)
+    {
         this.state = state;
         this.setting = setting;
     }
 }
 
 [Serializable]
-public class Config : IPluginConfiguration {
+public class Configuration : IPluginConfiguration
+{
     public event Action? OnSave;
 
     public int Version { get; set; } = 6;
@@ -28,24 +31,21 @@ public class Config : IPluginConfiguration {
     public bool EmoteActivity { get; set; } = false;
     public bool ImportantActivity { get; set; } = false;
 
-    public void Initialize() {
+    public void Initialize()
+    {
         // Initialise the config.
         elementsConfig ??= new Dictionary<Element, List<ConfigEntry>>();
 
-        foreach(Element element in Enum.GetValues(typeof(Element))) {
-            if(!elementsConfig.ContainsKey(element)) {
-                List<ConfigEntry> entry = new() { new ConfigEntry(State.Default, Setting.Show) };
-                elementsConfig[element] = entry;
-            }
-        }
+        foreach(var element in Enum.GetValues<Element>())
+            if(!elementsConfig.ContainsKey(element))
+                elementsConfig[element] = [new ConfigEntry(State.Default, Setting.Show)];
 
         Save();
     }
 
     public List<ConfigEntry> GetElementConfig(Element elementId) {
-        if(!elementsConfig.ContainsKey(elementId)) {
+        if(!elementsConfig.ContainsKey(elementId))
             elementsConfig[elementId] = [];
-        }
 
         return elementsConfig[elementId];
     }

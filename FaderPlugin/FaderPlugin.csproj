@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
 		<Description>Fader Plugin</Description>
-		<Version>2.6.2.5</Version>
+		<Version>2.6.2.6</Version>
 	</PropertyGroup>
 
 	<PropertyGroup>
@@ -51,5 +51,20 @@
 			<HintPath>$(DalamudLibPath)Lumina.Excel.dll</HintPath>
 			<Private>false</Private>
 		</Reference>
+	</ItemGroup>
+
+	<ItemGroup>
+	  <EmbeddedResource Update="Resources\Language.resx">
+	    <Generator>ResXFileCodeGenerator</Generator>
+	    <LastGenOutput>Language.Designer.cs</LastGenOutput>
+	  </EmbeddedResource>
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Compile Update="Resources\Language.Designer.cs">
+	    <DesignTime>True</DesignTime>
+	    <AutoGen>True</AutoGen>
+	    <DependentUpon>Language.resx</DependentUpon>
+	  </Compile>
 	</ItemGroup>
 </Project>

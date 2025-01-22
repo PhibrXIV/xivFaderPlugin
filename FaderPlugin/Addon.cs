@@ -1,34 +1,40 @@
 ﻿using System;
 using System.Collections.Generic;
-using FFXIVClientStructs.FFXIV.Client.Game;
+using System.Numerics;
+using FFXIVClientStructs.FFXIV.Client.Game.Fate;
 using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using FFXIVClientStructs.FFXIV.Client.UI;
+using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 
 namespace FaderPlugin;
 
-public static unsafe class Addon {
-    private static readonly AtkStage* stage = AtkStage.Instance();
+public static unsafe class Addon
+{
+    private static readonly AtkStage* Stage = AtkStage.Instance();
 
-    private static Dictionary<string, (short, short)> storedPositions = new();
-    private static Dictionary<string, bool> lastState = new();
+    private static readonly Dictionary<string, (short, short)> StoredPositions = new();
+    private static readonly Dictionary<string, bool> LastState = new();
 
-    private static bool IsAddonOpen(string name) {
-        nint addonPointer = Plugin.GameGui.GetAddonByName(name, 1);
+    private static bool IsAddonOpen(string name)
+    {
+        var addonPointer = Plugin.GameGui.GetAddonByName(name);
         return addonPointer != nint.Zero;
     }
 
-    public static bool HasAddonStateChanged(string name) {
-        bool currentState = IsAddonOpen(name);
-        bool changed = !lastState.ContainsKey(name) || lastState[name] != currentState;
+    public static bool HasAddonStateChanged(string name)
+    {
+        var currentState = IsAddonOpen(name);
+        var changed = !LastState.ContainsKey(name) || LastState[name] != currentState;
 
-        lastState[name] = currentState;
+        LastState[name] = currentState;
 
         return changed;
     }
 
-    private static bool IsAddonFocused(string name) {
-        foreach (var addon in stage->RaptureAtkUnitManager->AtkUnitManager.FocusedUnitsList.Entries)
+    private static bool IsAddonFocused(string name)
+    {
+        foreach (var addon in Stage->RaptureAtkUnitManager->AtkUnitManager.FocusedUnitsList.Entries)
         {
             if (addon.Value == null || addon.Value->Name == null)
                 continue;
@@ -40,12 +46,9 @@ public static unsafe class Addon {
         return false;
     }
 
-    public static bool IsHudManagerOpen() {
+    public static bool IsHudManagerOpen()
+    {
         return IsAddonOpen("HudLayout");
-    }
-
-    public static bool HasHudManagerStateChanged() {
-        return HasAddonStateChanged("HudLayout");
     }
 
     public static bool IsChatFocused()
@@ -58,9 +61,10 @@ public static unsafe class Addon {
                || IsAddonFocused("ChatLogPanel_3");
     }
 
-    public static bool AreHotbarsLocked() {
-        var hotbar = Plugin.GameGui.GetAddonByName("_ActionBar", 1);
-        var crossbar = Plugin.GameGui.GetAddonByName("_ActionCross", 1);
+    public static bool AreHotbarsLocked()
+    {
+        var hotbar = Plugin.GameGui.GetAddonByName("_ActionBar");
+        var crossbar = Plugin.GameGui.GetAddonByName("_ActionCross");
 
         if (hotbar == nint.Zero || crossbar == nint.Zero)
             return true;
@@ -68,39 +72,65 @@ public static unsafe class Addon {
         var hotbarAddon = (AddonActionBar*)hotbar;
         var crossbarAddon = (AddonActionCross*)hotbar;
 
-        try {
+        try
+        {
             // Check whether Mouse Mode or Gamepad Mode is enabled.
             var mouseModeEnabled = hotbarAddon->ShowHideFlags == 0;
             return mouseModeEnabled ? hotbarAddon->IsLocked : crossbarAddon->IsLocked;
-        } catch(AccessViolationException) {
+        }
+        catch(AccessViolationException)
+        {
             return true;
         }
     }
 
-    public static void SetAddonVisibility(string name, bool isVisible) {
-        nint addonPointer = Plugin.GameGui.GetAddonByName(name, 1);
-        if(addonPointer == nint.Zero) {
+    public static void SetAddonVisibility(string name, bool isVisible)
+    {
+        var addonPointer = Plugin.GameGui.GetAddonByName(name);
+        if(addonPointer == nint.Zero)
             return;
-        }
 
-        AtkUnitBase* addon = (AtkUnitBase*)addonPointer;
+        var addon = (AtkUnitBase*)addonPointer;
 
-        if(isVisible) {
-            // Restore the elements position on screen.
-            if (storedPositions.TryGetValue(name, out var position) && (addon->X == -9999 || addon->Y == -9999))
+        if(isVisible)
+        {
+            // Restore the element position on screen.
+            if (StoredPositions.TryGetValue(name, out var position) && (addon->X == -9999 || addon->Y == -9999))
             {
                 var (x, y) = position;
                 addon->SetPosition(x, y);
             }
-        } else {
-            // Store the position prior to hiding the element.
-            if(addon->X != -9999 && addon->Y != -9999) {
-                storedPositions[name] = (addon->X, addon->Y);
-            }
+        }
+        else
+        {
+            // Store the position before hiding the element.
+            if(addon->X != -9999 && addon->Y != -9999)
+                StoredPositions[name] = (addon->X, addon->Y);
 
             // Move the element off screen so it can't be interacted with.
             addon->SetPosition(-9999, -9999);
         }
+    }
+
+    public record AddonPosition(bool IsPresent, short X, short Y, short W, short H)
+    {
+        public Vector2 Start => new Vector2(X, Y);
+        public Vector2 End => new Vector2(X + W, Y + H);
+
+        public static AddonPosition Empty => new(false, 0, 0, 0, 0);
+    }
+
+    public static AddonPosition GetAddonPosition(string name)
+    {
+        var addonPointer = Plugin.GameGui.GetAddonByName(name);
+        if(addonPointer == nint.Zero)
+            return AddonPosition.Empty;
+
+        var addon = (AtkUnitBase*)addonPointer;
+
+        var width = (short) addon->GetScaledWidth(true);
+        var height = (short) addon->GetScaledHeight(true);
+        return new AddonPosition(true, addon->X, addon->Y, width, height);
     }
 
     public static bool IsWeaponUnsheathed()
@@ -110,6 +140,16 @@ public static unsafe class Addon {
 
     public static bool InSanctuary()
     {
-        return GameMain.IsInSanctuary();
+        return TerritoryInfo.Instance()->InSanctuary;
+    }
+
+    public static bool InFate()
+    {
+        return FateManager.Instance()->CurrentFate != null;
+    }
+
+    public static bool IsMoving()
+    {
+        return AgentMap.Instance()->IsPlayerMoving != 0;
     }
 }

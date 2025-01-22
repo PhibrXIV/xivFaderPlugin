@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Timers;
 using Dalamud.Game.ClientState.Conditions;
@@ -12,35 +13,16 @@ using Dalamud.Interface.Windowing;
 using Dalamud.IoC;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
-using FaderPlugin.Config;
-using FaderPlugin.Windows;
+using FaderPlugin.Data;
+using faderPlugin.Resources;
+using FaderPlugin.Windows.Config;
 using Lumina.Excel;
 using Lumina.Excel.Sheets;
 
 namespace FaderPlugin;
 
-public class Plugin : IDalamudPlugin {
-    private readonly Config.Config config;
-    private readonly ConfigurationWindow configurationWindow;
-    private readonly WindowSystem windowSystem = new("Fader");
-
-    private readonly Dictionary<State, bool> stateMap = new();
-    private bool stateChanged;
-
-    // Idle State
-    private readonly Timer idleTimer = new();
-    private bool hasIdled;
-
-    // Chat State
-    private readonly Timer chatActivityTimer = new();
-    private bool hasChatActivity;
-
-    // Commands
-    private readonly string commandName = "/pfader";
-    private bool enabled = true;
-
-    private ExcelSheet<TerritoryType> territorySheet;
-
+public class Plugin : IDalamudPlugin
+{
     [PluginService] public static IDalamudPluginInterface PluginInterface { get; set; } = null!;
     [PluginService] public static IKeyState KeyState { get; set; } = null!;
     [PluginService] public static IFramework Framework { get; set; } = null!;
@@ -51,79 +33,109 @@ public class Plugin : IDalamudPlugin {
     [PluginService] public static IGameGui GameGui { get; set; } = null!;
     [PluginService] public static ITargetManager TargetManager { get; set; } = null!;
     [PluginService] public static IDataManager Data { get; private set; } = null!;
-    [PluginService] public static IPluginLog Log { get; private set; } = null!;
 
-    public Plugin() {;
-        LoadConfig(out config);
-        config.OnSave += UpdateAddonVisibility;
+    public readonly Configuration Config;
 
-        configurationWindow = new ConfigurationWindow(config);
-        windowSystem.AddWindow(configurationWindow);
+    private readonly WindowSystem WindowSystem = new("Fader");
+    private readonly ConfigWindow ConfigWindow;
 
-        territorySheet = Data.GetExcelSheet<TerritoryType>();
+    private readonly Dictionary<State, bool> StateMap = new();
+    private bool StateChanged;
+
+    // Idle State
+    private readonly Timer IdleTimer = new();
+    private bool HasIdled;
+
+    // Chat State
+    private readonly Timer ChatActivityTimer = new();
+    private bool HasChatActivity;
+
+    // Commands
+    private const string CommandName = "/pfader";
+    private bool Enabled = true;
+
+    private readonly ExcelSheet<TerritoryType> TerritorySheet;
+
+    public Plugin()
+    {
+        LoadConfig(out Config);
+        Config.OnSave += UpdateAddonVisibility;
+
+        LanguageChanged(PluginInterface.UiLanguage);
+
+        ConfigWindow = new ConfigWindow(this);
+        WindowSystem.AddWindow(ConfigWindow);
+
+        TerritorySheet = Data.GetExcelSheet<TerritoryType>();
 
         Framework.Update += OnFrameworkUpdate;
-        PluginInterface.UiBuilder.Draw += DrawUI;
-        PluginInterface.UiBuilder.OpenConfigUi += DrawConfigUI;
+        PluginInterface.UiBuilder.Draw += DrawUi;
+        PluginInterface.UiBuilder.OpenConfigUi += DrawConfigUi;
 
-        CommandManager.AddHandler(commandName, new CommandInfo(FaderCommandHandler) {
+        CommandManager.AddHandler(CommandName, new CommandInfo(FaderCommandHandler)
+        {
             HelpMessage = "Opens settings\n't' toggles whether it's enabled.\n'on' enables the plugin\n'off' disables the plugin."
         });
 
-        foreach(State state in Enum.GetValues(typeof(State))) {
-            stateMap[state] = state == State.Default;
-        }
+        foreach(State state in Enum.GetValues(typeof(State)))
+            StateMap[state] = state == State.Default;
 
         // We don't want a looping timer, only once
-        idleTimer.AutoReset = false;
-        idleTimer.Elapsed += (_, _) => {
-            hasIdled = true;
-        };
-        idleTimer.Start();
+        IdleTimer.AutoReset = false;
+        IdleTimer.Elapsed += (_, _) => HasIdled = true;
+        IdleTimer.Start();
 
-        chatActivityTimer.Elapsed += (_, _) => {
-            hasChatActivity = false;
-        };
+        ChatActivityTimer.Elapsed += (_, _) => HasChatActivity = false;
 
         ChatGui.ChatMessage += OnChatMessage;
+        PluginInterface.LanguageChanged += LanguageChanged;
 
-        if (config.DefaultDelay == 0) config.DefaultDelay = 2000; // recover from previous misconfiguration
+        // Recover from previous misconfiguration
+        if (Config.DefaultDelay == 0)
+            Config.DefaultDelay = 2000;
     }
 
-    private void LoadConfig(out Config.Config configuration) {
+    public void Dispose()
+    {
+        PluginInterface.LanguageChanged -= LanguageChanged;
+        Config.OnSave -= UpdateAddonVisibility;
+        Framework.Update -= OnFrameworkUpdate;
+        CommandManager.RemoveHandler(CommandName);
+        ChatGui.ChatMessage -= OnChatMessage;
+        UpdateAddonVisibility(true);
+
+        IdleTimer.Dispose();
+        ChatActivityTimer.Dispose();
+
+        ConfigWindow.Dispose();
+        WindowSystem.RemoveWindow(ConfigWindow);
+    }
+
+    private void LanguageChanged(string langCode)
+    {
+        Language.Culture = new CultureInfo(langCode);
+    }
+
+    private void LoadConfig(out Configuration configuration)
+    {
         var existingConfig = PluginInterface.GetPluginConfig();
 
-        if(existingConfig is { Version: 6 }) {
-            configuration = (Config.Config) existingConfig;
-        } else {
-            configuration = new Config.Config();
-        }
+        if(existingConfig is { Version: 6 })
+            configuration = (Configuration) existingConfig;
+        else
+            configuration = new Configuration();
 
         configuration.Initialize();
     }
 
-    public void Dispose() {
-        config.OnSave -= UpdateAddonVisibility;
-        Framework.Update -= OnFrameworkUpdate;
-        CommandManager.RemoveHandler(commandName);
-        ChatGui.ChatMessage -= OnChatMessage;
-        UpdateAddonVisibility(true);
-
-        idleTimer.Dispose();
-        chatActivityTimer.Dispose();
-
-        configurationWindow.Dispose();
-        windowSystem.RemoveWindow(configurationWindow);
+    private void DrawUi()
+    {
+        WindowSystem.Draw();
     }
 
-    private void DrawUI()
+    private void DrawConfigUi()
     {
-        windowSystem.Draw();
-    }
-
-    private void DrawConfigUI()
-    {
-        configurationWindow.IsOpen = true;
+        ConfigWindow.Toggle();
     }
 
     private void FaderCommandHandler(string s, string arguments)
@@ -131,19 +143,19 @@ public class Plugin : IDalamudPlugin {
         switch (arguments.Trim())
         {
             case "t" or "toggle":
-                enabled = !enabled;
-                ChatGui.Print($"Fader plugin {(enabled ? "enabled" : "disabled")}.");
+                Enabled = !Enabled;
+                ChatGui.Print(Enabled ? Language.ChatPluginEnabled : Language.ChatPluginDisabled);
                 break;
             case "on":
-                enabled = true;
-                ChatGui.Print($"Fader plugin enabled.");
+                Enabled = true;
+                ChatGui.Print(Language.ChatPluginEnabled);
                 break;
             case "off":
-                enabled = false;
-                ChatGui.Print($"Fader plugin disabled.");
+                Enabled = false;
+                ChatGui.Print(Language.ChatPluginDisabled);
                 break;
             case "":
-                configurationWindow.IsOpen = true;
+                ConfigWindow.Toggle();
                 break;
         }
     }
@@ -152,24 +164,25 @@ public class Plugin : IDalamudPlugin {
     {
         // Don't trigger chat for non-standard chat channels.
         if (!Constants.ActiveChatTypes.Contains(type)
-            && (!config.ImportantActivity || !Constants.ImportantChatTypes.Contains(type))
-            && (!config.EmoteActivity || !Constants.EmoteChatTypes.Contains(type)))
+            && (!Config.ImportantActivity || !Constants.ImportantChatTypes.Contains(type))
+            && (!Config.EmoteActivity || !Constants.EmoteChatTypes.Contains(type)))
             return;
 
-        hasChatActivity = true;
-        chatActivityTimer.Stop();
-        chatActivityTimer.Interval = config.ChatActivityTimeout;
-        chatActivityTimer.Start();
+        HasChatActivity = true;
+
+        ChatActivityTimer.Stop();
+        ChatActivityTimer.Interval = Config.ChatActivityTimeout;
+        ChatActivityTimer.Start();
     }
 
     private void OnFrameworkUpdate(IFramework framework) {
         if(!IsSafeToWork())
             return;
 
-        stateChanged = false;
+        StateChanged = false;
 
         // User Focus
-        UpdateStateMap(State.UserFocus, KeyState[config.OverrideKey] || (config.FocusOnHotbarsUnlock && !Addon.AreHotbarsLocked()));
+        UpdateStateMap(State.UserFocus, KeyState[Config.OverrideKey] || (Config.FocusOnHotbarsUnlock && !Addon.AreHotbarsLocked()));
 
         // Key Focus
         UpdateStateMap(State.AltKeyFocus, KeyState[(int) Constants.OverrideKeys.Alt]);
@@ -180,7 +193,10 @@ public class Plugin : IDalamudPlugin {
         UpdateStateMap(State.ChatFocus, Addon.IsChatFocused());
 
         // Chat Activity
-        UpdateStateMap(State.ChatActivity, hasChatActivity);
+        UpdateStateMap(State.ChatActivity, HasChatActivity);
+
+        // Combat
+        UpdateStateMap(State.IsMoving, Addon.IsMoving());
 
         // Combat
         UpdateStateMap(State.Combat, Condition[ConditionFlag.InCombat]);
@@ -192,8 +208,11 @@ public class Plugin : IDalamudPlugin {
         UpdateStateMap(State.InSanctuary, Addon.InSanctuary());
 
         // Island Sanctuary
-        var inIslandSanctuary = territorySheet.HasRow(ClientState.TerritoryType) && territorySheet.GetRow(ClientState.TerritoryType).TerritoryIntendedUse.RowId == 49;
+        var inIslandSanctuary = TerritorySheet.HasRow(ClientState.TerritoryType) && TerritorySheet.GetRow(ClientState.TerritoryType).TerritoryIntendedUse.RowId == 49;
         UpdateStateMap(State.IslandSanctuary, inIslandSanctuary);
+
+        // In Fate Area
+        UpdateStateMap(State.InFate, Addon.InFate());
 
         var target = TargetManager.Target;
         // Enemy Target
@@ -219,70 +238,69 @@ public class Plugin : IDalamudPlugin {
         UpdateStateMap(State.Duty, !inIslandSanctuary && boundByDuty);
 
         // Only update display state if a state has changed.
-        if(stateChanged || hasIdled || Addon.HasAddonStateChanged("HudLayout")) {
+        if(StateChanged || HasIdled || Addon.HasAddonStateChanged("HudLayout"))
+        {
             UpdateAddonVisibility();
 
             // Always set Idled to false to prevent looping
-            hasIdled = false;
+            HasIdled = false;
 
             // Only start idle timer if there was a state change
-            if(stateChanged && config.DefaultDelayEnabled) {
+            if(StateChanged && Config.DefaultDelayEnabled)
+            {
                 // If idle transition is enabled reset the idle state and start the timer.
-                idleTimer.Stop();
-                idleTimer.Interval = config.DefaultDelay;
-                idleTimer.Start();
+                IdleTimer.Stop();
+                IdleTimer.Interval = Config.DefaultDelay;
+                IdleTimer.Start();
             }
         }
     }
 
-    private void UpdateStateMap(State state, bool value) {
-        if(stateMap[state] != value) {
-            stateMap[state] = value;
-            stateChanged = true;
-        }
+    private void UpdateStateMap(State state, bool value)
+    {
+        if (StateMap[state] == value)
+            return;
+
+        StateMap[state] = value;
+        StateChanged = true;
     }
 
-    private void UpdateAddonVisibility() {
+    private void UpdateAddonVisibility()
+    {
         UpdateAddonVisibility(false);
     }
 
-    private void UpdateAddonVisibility(bool forceShow) {
+    private void UpdateAddonVisibility(bool forceShow)
+    {
         if(!IsSafeToWork())
             return;
 
-        forceShow = !enabled || forceShow || Addon.IsHudManagerOpen();
+        forceShow = !Enabled || forceShow || Addon.IsHudManagerOpen();
 
-        foreach(Element element in Enum.GetValues(typeof(Element))) {
-            string[] addonNames = ElementUtil.GetAddonName(element);
-
-            if(addonNames.Length == 0) {
+        foreach(var element in Enum.GetValues<Element>())
+        {
+            var addonNames = ElementUtil.GetAddonName(element);
+            if(addonNames.Length == 0)
                 continue;
-            }
 
-            Setting setting = Setting.Unknown;
-
-            if(forceShow) {
+            var setting = Setting.Unknown;
+            if(forceShow)
                 setting = Setting.Show;
-            }
 
             if(setting == Setting.Unknown)
             {
-                List<ConfigEntry> elementConfig = config.GetElementConfig(element);
+                var elementConfig = Config.GetElementConfig(element);
 
-                if (elementConfig.FirstOrDefault(entry => stateMap[entry.state]) is { } configEntry &&
-                    (configEntry.state != State.Default || !config.DefaultDelayEnabled || hasIdled))
-                {
-                    setting = configEntry.setting;
-                }
+                var selected = elementConfig.FirstOrDefault(entry => StateMap[entry.state]);
+                if (selected is not null && (selected.state != State.Default || !Config.DefaultDelayEnabled || HasIdled))
+                    setting = selected.setting;
             }
 
-            if(setting == Setting.Unknown) {
+            if(setting == Setting.Unknown)
                 continue;
-            }
 
-            foreach(string addonName in addonNames) {
+            foreach(var addonName in addonNames)
                 Addon.SetAddonVisibility(addonName, setting == Setting.Show);
-            }
         }
     }
 
@@ -290,7 +308,8 @@ public class Plugin : IDalamudPlugin {
     /// Returns whether it is safe for the plugin to perform work,
     /// dependent on whether the game is on a login or loading screen.
     /// </summary>
-    private bool IsSafeToWork() {
+    private bool IsSafeToWork()
+    {
         return !Condition[ConditionFlag.BetweenAreas] && ClientState.IsLoggedIn;
     }
 }
