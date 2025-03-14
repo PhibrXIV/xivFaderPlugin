@@ -3,9 +3,11 @@ using System.Collections.Generic;
 using System.Numerics;
 using FFXIVClientStructs.FFXIV.Client.Game.Fate;
 using FFXIVClientStructs.FFXIV.Client.Game.UI;
+using FFXIVClientStructs.FFXIV.Client.Graphics;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using FFXIVClientStructs.FFXIV.Component.GUI;
+using ImGuiNET;
 
 namespace FaderPlugin;
 
@@ -61,7 +63,55 @@ public static unsafe class Addon
                || IsAddonFocused("ChatLogPanel_3");
     }
 
-    public static bool AreHotbarsLocked()
+    public static unsafe bool IsMouseHovering(AtkUnitBase* addon)
+    {
+        // Get the addon’s screen position and size.
+        float posX = addon->GetX();
+        float posY = addon->GetY();
+        float width = addon->GetScaledWidth(true);
+        float height = addon->GetScaledHeight(true);
+
+        // Retrieve the current mouse position (using ImGui here, or another Dalamud method).
+        var mousePos = ImGui.GetMousePos();
+
+        return mousePos.X >= posX && mousePos.X <= posX + width &&
+               mousePos.Y >= posY && mousePos.Y <= posY + height;
+    }
+    public static unsafe void SetAddonOpacity(string addonName, float alpha)
+    {
+        // Get the addon pointer by name.
+        var addonPointer = Plugin.GameGui.GetAddonByName(addonName);
+        if (addonPointer == nint.Zero)
+            return;
+
+        var addon = (AtkUnitBase*)addonPointer;
+        // Check if there are any nodes.
+        if (addon->UldManager.NodeListCount <= 0)
+            return;
+
+        // Target the first node in the list.
+        AtkResNode* node = addon->UldManager.NodeList[0];
+        if (node == null)
+            return;
+
+        // Read the current color as a ByteColor.
+        ByteColor currentColor = node->Color;
+        byte r = currentColor.R;
+        byte g = currentColor.G;
+        byte b = currentColor.B;
+        // Calculate the new alpha value.
+        byte newAlpha = (byte)(alpha * 255);
+
+        // Create a new ByteColor and assign its fields.
+        ByteColor newColor = default;
+        newColor.A = newAlpha;
+        newColor.R = r;
+        newColor.G = g;
+        newColor.B = b;
+        node->Color = newColor;
+    }
+
+public static bool AreHotbarsLocked()
     {
         var hotbar = Plugin.GameGui.GetAddonByName("_ActionBar");
         var crossbar = Plugin.GameGui.GetAddonByName("_ActionCross");

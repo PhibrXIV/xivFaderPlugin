@@ -200,8 +200,10 @@ public partial class ConfigWindow
                 // Config for each condition.
                 for(var i = 0; i < SelectedConfig.Count; i++)
                 {
+
                     var elementState = SelectedConfig[i].state;
                     var elementSetting = SelectedConfig[i].setting;
+
 
                     // State
                     var itemWidth = 200.0f * ImGuiHelpers.GlobalScale;
@@ -256,8 +258,18 @@ public partial class ConfigWindow
                             }
                         }
                     }
-
-                    if(elementState == State.Default)
+                    // Opacity
+                    {
+                        float opacity = SelectedConfig[i].Opacity;
+                        ImGui.SameLine();
+                        ImGui.SetNextItemWidth(itemWidth);
+                        if (ImGui.SliderFloat($"##{elementName}-{i}-opacity", ref opacity, 0.0f, 1.0f, "Opacity: %.2f"))
+                        {
+                            SelectedConfig[i].Opacity = opacity;
+                            SaveSelectedElementsConfig();
+                        }
+                    }
+                    if (elementState == State.Default)
                         continue;
 
                     // Up
@@ -307,6 +319,7 @@ public partial class ConfigWindow
 
                         SaveSelectedElementsConfig();
                     }
+
                 }
 
                 using var font = ImRaii.PushFont(UiBuilder.IconFont);

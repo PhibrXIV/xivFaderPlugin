@@ -18,6 +18,8 @@ using faderPlugin.Resources;
 using FaderPlugin.Windows.Config;
 using Lumina.Excel;
 using Lumina.Excel.Sheets;
+using FFXIVClientStructs.FFXIV.Component.GUI;
+using ImGuiNET;
 
 namespace FaderPlugin;
 
@@ -54,12 +56,16 @@ public class Plugin : IDalamudPlugin
     private const string CommandName = "/pfader";
     private bool Enabled = true;
 
+    // Opacity State
+    private readonly Dictionary<string, float> CurrentAlphas = new();
+
+
     private readonly ExcelSheet<TerritoryType> TerritorySheet;
 
     public Plugin()
     {
         LoadConfig(out Config);
-        Config.OnSave += UpdateAddonVisibility;
+        // Config.OnSave += UpdateAddonVisibility;
 
         LanguageChanged(PluginInterface.UiLanguage);
 
@@ -175,12 +181,12 @@ public class Plugin : IDalamudPlugin
         ChatActivityTimer.Start();
     }
 
-    private void OnFrameworkUpdate(IFramework framework) {
+    private unsafe void OnFrameworkUpdate(IFramework framework) {
         if(!IsSafeToWork())
             return;
 
         StateChanged = false;
-
+        bool hoverDetected = false;
         // User Focus
         UpdateStateMap(State.UserFocus, KeyState[Config.OverrideKey] || (Config.FocusOnHotbarsUnlock && !Addon.AreHotbarsLocked()));
 
@@ -237,23 +243,47 @@ public class Plugin : IDalamudPlugin
         var boundByDuty = Condition[ConditionFlag.BoundByDuty] || Condition[ConditionFlag.BoundByDuty56] || Condition[ConditionFlag.BoundByDuty95];
         UpdateStateMap(State.Duty, !inIslandSanctuary && boundByDuty);
 
-        // Only update display state if a state has changed.
-        if(StateChanged || HasIdled || Addon.HasAddonStateChanged("HudLayout"))
+        foreach (Element element in Enum.GetValues(typeof(Element)))
         {
-            UpdateAddonVisibility();
-
-            // Always set Idled to false to prevent looping
-            HasIdled = false;
-
-            // Only start idle timer if there was a state change
-            if(StateChanged && Config.DefaultDelayEnabled)
+            var addonNames = ElementUtil.GetAddonName(element);
+            foreach (var addonName in addonNames)
             {
-                // If idle transition is enabled reset the idle state and start the timer.
-                IdleTimer.Stop();
-                IdleTimer.Interval = Config.DefaultDelay;
-                IdleTimer.Start();
+                var addonPointer = Plugin.GameGui.GetAddonByName(addonName);
+                if (addonPointer != nint.Zero)
+                {
+                    // Cast to AtkUnitBase* (requires an unsafe context)
+                    var addon = (AtkUnitBase*)addonPointer;
+                    if (Addon.IsMouseHovering(addon))
+                    {
+                        hoverDetected = true;
+                        break;
+                    }
+                }
             }
+            if (hoverDetected)
+                break;
         }
+
+        UpdateStateMap(State.Hover, hoverDetected);
+
+        // Only update display state if a state has changed.
+        //if (StateChanged || HasIdled || Addon.HasAddonStateChanged("HudLayout"))
+        //{
+        //    UpdateAddonVisibility();
+
+        //    // Always set Idled to false to prevent looping
+        //    HasIdled = false;
+
+        //    // Only start idle timer if there was a state change
+        //    if(StateChanged && Config.DefaultDelayEnabled)
+        //    {
+        //        // If idle transition is enabled reset the idle state and start the timer.
+        //        IdleTimer.Stop();
+        //        IdleTimer.Interval = Config.DefaultDelay;
+        //        IdleTimer.Start();
+        //    }
+        //}
+        UpdateAddonOpacity();
     }
 
     private void UpdateStateMap(State state, bool value)
@@ -303,6 +333,117 @@ public class Plugin : IDalamudPlugin
                 Addon.SetAddonVisibility(addonName, setting == Setting.Show);
         }
     }
+    private float MoveTowards(float current, float target, float maxDelta)
+    {
+        if (Math.Abs(target - current) <= maxDelta)
+            return target;
+        return current + Math.Sign(target - current) * maxDelta;
+    }
+    private unsafe bool IsAddonHovered(string addonName)
+    {
+        var addonPointer = GameGui.GetAddonByName(addonName);
+        if (addonPointer == nint.Zero)
+            return false;
+
+        var addon = (AtkUnitBase*)addonPointer;
+        var mousePos = ImGui.GetMousePos();
+        float posX = addon->GetX();
+        float posY = addon->GetY();
+        float width = addon->GetScaledWidth(true);
+        float height = addon->GetScaledHeight(true);
+
+        return mousePos.X >= posX && mousePos.X <= posX + width &&
+               mousePos.Y >= posY && mousePos.Y <= posY + height;
+    }
+    private void UpdateAddonOpacity()
+    {
+        foreach (Element element in Enum.GetValues(typeof(Element)))
+        {
+            if (element.ShouldIgnoreElement())
+                continue;
+
+            var addonNames = ElementUtil.GetAddonName(element);
+            if (addonNames.Length == 0)
+                continue;
+
+            // Retrieve configuration entries for this element.
+            var elementConfig = Config.GetElementConfig(element);
+            // Try to find an active config entry; if none found, fall back to the Default entry.
+            ConfigEntry? selectedEntry = elementConfig.FirstOrDefault(e => StateMap[e.state])
+                                          ?? elementConfig.FirstOrDefault(e => e.state == State.Default);
+
+            // Determine the effective setting.
+            // If the plugin is disabled or the HUD Manager is open, force Show.
+            Setting effectiveSetting = Setting.Unknown;
+            if (!Enabled || Addon.IsHudManagerOpen())
+            {
+                effectiveSetting = Setting.Show;
+            }
+            else if (selectedEntry != null && (selectedEntry.state != State.Default || !Config.DefaultDelayEnabled || HasIdled))
+            {
+                effectiveSetting = selectedEntry.setting;
+            }
+            else
+            {
+                effectiveSetting = Setting.Hide;
+            }
+            if (effectiveSetting == Setting.Unknown)
+                continue;
+
+            // Process each addon name associated with this element.
+            foreach (var addonName in addonNames)
+            {
+                // Retrieve current alpha (or fallback if not present).
+                if (!CurrentAlphas.TryGetValue(addonName, out float currentAlpha))
+                    currentAlpha = Config.DefaultAlpha;
+
+                float targetAlpha = Config.DefaultAlpha; // default fallback
+
+                if (selectedEntry != null)
+                {
+                    if (selectedEntry.state == State.Hover)
+                    {
+                        // For Hover: only update target opacity if this addon is hovered.
+                        // Otherwise, leave it at its current alpha.
+                        targetAlpha = IsAddonHovered(addonName) ? selectedEntry.Opacity : currentAlpha;
+                    }
+                    else
+                    {
+                        // For non-hover states, if the effective setting is Show, use the configured opacity;
+                        // if Hide, fade out (target 0).
+                        targetAlpha = (effectiveSetting == Setting.Show) ? selectedEntry.Opacity : 0.0f;
+                    }
+                }
+
+                // Smoothly interpolate current opacity toward the target.
+                currentAlpha = MoveTowards(currentAlpha, targetAlpha, Config.TransitionSpeed * (float)Framework.UpdateDelta.TotalSeconds);
+                CurrentAlphas[addonName] = currentAlpha;
+                Addon.SetAddonOpacity(addonName, currentAlpha);
+
+                // Handle visibility using old functionality:
+                // If effective setting is Show, ensure the addon is visible.
+                // If Hide, once opacity is nearly zero, hide it by moving off-screen.
+                if (effectiveSetting == Setting.Show)
+                {
+                    Addon.SetAddonVisibility(addonName, true);
+                }
+                else
+                {
+                    if (currentAlpha < 0.05f)
+                        Addon.SetAddonVisibility(addonName, false);
+                    else
+                        Addon.SetAddonVisibility(addonName, true);
+                }
+            }
+        }
+    }
+
+
+
+
+
+
+
 
     /// <summary>
     /// Returns whether it is safe for the plugin to perform work,

@@ -28,7 +28,9 @@ public enum State
     InSanctuary = 18,
     InFate = 19,
     IsMoving = 20,
+    Hover = 21
 }
+
 
 public static class StateUtil
 {
@@ -57,6 +59,7 @@ public static class StateUtil
             State.Gathering => Language.StateGathering,
             State.Mounted => Language.StateMounted,
             State.Combat => Language.StateCombat,
+            State.Hover => Language.StateHover,
             _ => throw new ArgumentOutOfRangeException(nameof(state), state, null)
         };
     }
@@ -83,6 +86,7 @@ public static class StateUtil
         State.UserFocus,
         State.AltKeyFocus,
         State.CtrlKeyFocus,
-        State.ShiftKeyFocus
+        State.ShiftKeyFocus,
+        State.Hover
     ];
 }
