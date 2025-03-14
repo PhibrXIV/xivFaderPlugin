@@ -49,9 +49,6 @@ public class Configuration : IPluginConfiguration
     public float HoverAlpha { get; set; } = 0.0f;
     public float TransitionSpeed { get; set; } = 0.5f;
 
-
-    public Dictionary<Element, ElementOpacitySettings> ElementOpacitySettings { get; set; } = new Dictionary<Element, ElementOpacitySettings>();
-
     public void Initialize()
     {
         // Initialise the config.
@@ -60,17 +57,6 @@ public class Configuration : IPluginConfiguration
         {
             if (!elementsConfig.ContainsKey(element))
                 elementsConfig[element] = new List<ConfigEntry> { new ConfigEntry(State.Default, Setting.Show) };
-
-            // Initialize opacity settings if they don't exist.
-            if (!ElementOpacitySettings.ContainsKey(element))
-            {
-                // Use a sensible default, or you can choose to set per element differently.
-                ElementOpacitySettings[element] = new ElementOpacitySettings
-                {
-                    Default = DefaultAlpha,
-                    Hover = HoverAlpha
-                };
-            }
         }
         Save();
     }

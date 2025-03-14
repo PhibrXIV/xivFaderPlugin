@@ -400,4 +400,7 @@ Configuration of the element that was selected first will override the rest.</va
   <data name="StateHover" xml:space="preserve">
     <value>Hover</value>
   </data>
+  <data name="Milliseconds" xml:space="preserve">
+    <value>milliseconds</value>
+  </data>
 </root>

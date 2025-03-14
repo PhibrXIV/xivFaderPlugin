@@ -10,6 +10,7 @@ using Dalamud.Utility;
 using FaderPlugin.Data;
 using faderPlugin.Resources;
 using ImGuiNET;
+using System.Linq;
 
 namespace FaderPlugin.Windows.Config;
 
@@ -106,6 +107,25 @@ public partial class ConfigWindow
                 Configuration.ChatActivityTimeout = (int)TimeSpan.FromSeconds(chatActivityTimeout).TotalMilliseconds;
                 Configuration.Save();
             }
+
+            ImGui.TextUnformatted("Transition time:"); // TODO: Localize
+            ImGui.SameLine();
+            ImGui.SetNextItemWidth(170.0f * ImGuiHelpers.GlobalScale);
+
+            // Convert internal speed to a transition time in milliseconds.
+            float transitionTimeMs = Configuration.TransitionSpeed > 0.0001f
+                ? (1.0f / Configuration.TransitionSpeed) * 1000.0f
+                : 100.0f; // fallback value if speed is too low ( shouldn't happen )
+
+            if (ImGui.SliderFloat("##transition_time_ms", ref transitionTimeMs, 10.0f, 1000.0f, $"%.0f {Language.Milliseconds}"))
+            {
+                // Round to the nearest 10ms increment. could remove but round numbers are satisfying.
+                transitionTimeMs = (float)Math.Round(transitionTimeMs / 10.0f) * 10.0f;
+                Configuration.TransitionSpeed = 1000.0f / transitionTimeMs;
+                Configuration.Save();
+            }
+            ImGuiComponents.HelpMarker("Time in milliseconds for an addon to fully transition in opacity."); // TODO: Localize
+
         }
 
         ImGuiHelpers.ScaledDummy(5);
@@ -239,25 +259,6 @@ public partial class ConfigWindow
                         ImGui.SameLine();
                     }
 
-                    // Setting
-                    ImGui.SetNextItemWidth(itemWidth);
-                    using (var combo = ImRaii.Combo($"##{elementName}-{i}-setting", elementSetting.GetName()))
-                    {
-                        if (combo.Success)
-                        {
-                            foreach(var setting in Enum.GetValues<Setting>())
-                            {
-                                if(setting == Setting.Unknown)
-                                    continue;
-
-                                if(ImGui.Selectable(setting.GetName()))
-                                {
-                                    SelectedConfig[i].setting = setting;
-                                    SaveSelectedElementsConfig();
-                                }
-                            }
-                        }
-                    }
                     // Opacity
                     {
                         float opacity = SelectedConfig[i].Opacity;
@@ -266,9 +267,30 @@ public partial class ConfigWindow
                         if (ImGui.SliderFloat($"##{elementName}-{i}-opacity", ref opacity, 0.0f, 1.0f, "Opacity: %.2f"))
                         {
                             SelectedConfig[i].Opacity = opacity;
+                            // If the opacity is increased above 0.05 while the element is disabled,
+                            // force the setting back to Show.
+                            if (opacity > 0.05f && SelectedConfig[i].setting == Setting.Hide)
+                            {
+                                SelectedConfig[i].setting = Setting.Show;
+                            }
                             SaveSelectedElementsConfig();
                         }
                     }
+                    ImGui.SameLine();
+                    // Only show the "Disable Element" checkbox if the configuration is the default state and the opacity is <= 0.05.
+                    if (SelectedConfig[i].state == State.Default && SelectedConfig[i].Opacity <= 0.05f)
+                    {
+                        bool hide = SelectedConfig[i].setting == Setting.Hide;
+                        if (ImGui.Checkbox($"##{elementName}-{i}-hide", ref hide))
+                        {
+                            SelectedConfig[i].setting = hide ? Setting.Hide : Setting.Show;
+                            SaveSelectedElementsConfig();
+                        }
+                        ImGui.SameLine();
+                        ImGui.TextUnformatted("Disable Element");
+                        ImGuiComponents.HelpMarker("Check this box to disable the element when its opacity is at or below 0.05. Leave unchecked to force the element to remain clickable/hoverable even at low opacity.");
+                    }
+
                     if (elementState == State.Default)
                         continue;
 
@@ -321,7 +343,7 @@ public partial class ConfigWindow
                     }
 
                 }
-
+                ImGui.SameLine();
                 using var font = ImRaii.PushFont(UiBuilder.IconFont);
                 if(ImGui.Button($"{FontAwesomeIcon.Plus.ToIconString()}##{elementName}-add"))
                 {
@@ -334,6 +356,23 @@ public partial class ConfigWindow
                     SelectedConfig[^1] = swap2;
 
                     SaveSelectedElementsConfig();
+                }
+
+
+            }
+            // At the bottom of the element configuration section, add a warning if needed.
+            {
+                // Check if the default config entry is disabled.
+                var defaultEntry = SelectedConfig.FirstOrDefault(e => e.state == State.Default);
+                bool defaultDisabled = defaultEntry != null && defaultEntry.setting == Setting.Hide;
+
+                // Check if any hover state config exists.
+                bool hoverPresent = SelectedConfig.Any(e => e.state == State.Hover);
+
+                if (defaultDisabled && hoverPresent)
+                {
+                    ImGui.Separator();
+                    ImGui.TextColored(ImGuiColors.DalamudRed, "Warning: Disabled Elements cannot be hovered!"); // TODO: Localize
                 }
             }
         }

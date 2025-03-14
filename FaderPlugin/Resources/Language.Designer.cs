@@ -529,6 +529,15 @@ namespace faderPlugin.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to milliseconds.
+        /// </summary>
+        internal static string Milliseconds {
+            get {
+                return ResourceManager.GetString("Milliseconds", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to seconds.
         /// </summary>
         internal static string Seconds {
