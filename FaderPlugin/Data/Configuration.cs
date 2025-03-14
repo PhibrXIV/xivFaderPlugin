@@ -18,20 +18,6 @@ public class ConfigEntry
 }
 
 [Serializable]
-public class ElementOpacitySettings
-{
-    /// <summary>
-    /// The default opacity when not hovered (range 0.0–1.0).
-    /// </summary>
-    public float Default { get; set; } = 0.5f;
-    /// <summary>
-    /// The opacity when hovered (range 0.0–1.0).
-    /// </summary>
-    public float Hover { get; set; } = 1.0f;
-}
-
-
-[Serializable]
 public class Configuration : IPluginConfiguration
 {
     public event Action? OnSave;
@@ -46,9 +32,8 @@ public class Configuration : IPluginConfiguration
     public bool EmoteActivity { get; set; } = false;
     public bool ImportantActivity { get; set; } = false;
     public float DefaultAlpha { get; set; } = 1.0f;
-    public float HoverAlpha { get; set; } = 0.0f;
-    public float EnterTransitionSpeed { get; set; } = 3.0f; // alpha per second when fading in
-    public float ExitTransitionSpeed { get; set; } = 0.5f; // alpha per second when fading out
+    public float EnterTransitionSpeed { get; set; } = 3.0f; // change in alpha per frame when fading in
+    public float ExitTransitionSpeed { get; set; } = 0.5f; // change in alpha per frame when fading out
 
 
     public void Initialize()

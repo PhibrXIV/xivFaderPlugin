@@ -97,7 +97,6 @@ public class Plugin : IDalamudPlugin
         ChatGui.ChatMessage += OnChatMessage;
         PluginInterface.LanguageChanged += LanguageChanged;
 
-        // Recovery: set default delay if misconfigured.
         if (Config.DefaultDelay == 0)
             Config.DefaultDelay = 2000;
     }
@@ -415,7 +414,7 @@ public class Plugin : IDalamudPlugin
 
 
     /// <summary>
-    /// Determines the effective setting for an addon.
+    /// Determines the effective setting for a ConfigEntry.
     /// </summary>
     private Setting GetEffectiveSetting(ConfigEntry candidate)
     {
