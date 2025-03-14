@@ -47,7 +47,9 @@ public class Configuration : IPluginConfiguration
     public bool ImportantActivity { get; set; } = false;
     public float DefaultAlpha { get; set; } = 1.0f;
     public float HoverAlpha { get; set; } = 0.0f;
-    public float TransitionSpeed { get; set; } = 0.5f;
+    public float EnterTransitionSpeed { get; set; } = 3.0f; // alpha per second when fading in
+    public float ExitTransitionSpeed { get; set; } = 0.5f; // alpha per second when fading out
+
 
     public void Initialize()
     {

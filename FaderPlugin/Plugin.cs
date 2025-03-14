@@ -55,6 +55,7 @@ public class Plugin : IDalamudPlugin
     private const string CommandName = "/pfader";
     private bool _enabled = true;
     private readonly Dictionary<string, float> _currentAlphas = new();
+    private readonly Dictionary<string, bool> _finishingHover = new();
 
     // Territory Excel sheet.
     private readonly ExcelSheet<TerritoryType> _territorySheet;
@@ -281,10 +282,9 @@ public class Plugin : IDalamudPlugin
         if (!IsSafeToWork())
             return;
 
-        // Determine if we should force showing elements.
         bool forceShow = !_enabled || Addon.IsHudManagerOpen();
 
-        // When forceShow is active, only update visibility but leave opacities untouched.
+        // When forceShow is active, only update hide/show but leave opacities untouched.
         if (forceShow)
         {
             foreach (Element element in Enum.GetValues(typeof(Element)))
@@ -293,19 +293,17 @@ public class Plugin : IDalamudPlugin
                     continue;
 
                 var addonNames = ElementUtil.GetAddonName(element);
-                if (addonNames.Length == 0)
-                    continue;
-
                 foreach (var addonName in addonNames)
                 {
-                    // Do not modify _currentAlphas, simply force visibility.
+                    // Force show
                     Addon.SetAddonVisibility(addonName, true);
+                    // Also reset finishingHover
+                    _finishingHover[addonName] = false;
                 }
             }
             return;
         }
 
-        // Clear delay state if default delay is disabled.
         if (!Config.DefaultDelayEnabled)
             _delayManager.ClearAll();
 
@@ -316,59 +314,105 @@ public class Plugin : IDalamudPlugin
                 continue;
 
             var addonNames = ElementUtil.GetAddonName(element);
-            if (addonNames.Length == 0)
-                continue;
-
             var elementConfig = Config.GetElementConfig(element);
+
             foreach (var addonName in addonNames)
             {
-                bool isHovered = IsAddonHovered(addonName);
-                ConfigEntry candidate = GetCandidateConfig(addonName, elementConfig, now, isHovered);
+                bool physicallyHovered = IsAddonHovered(addonName);
+                ConfigEntry candidate = GetCandidateConfig(addonName, elementConfig, now, physicallyHovered);
                 Setting effectiveSetting = GetEffectiveSetting(candidate);
 
                 float currentAlpha = _currentAlphas.TryGetValue(addonName, out var alpha) ? alpha : Config.DefaultAlpha;
-                float targetAlpha = CalculateTargetAlpha(candidate, effectiveSetting, isHovered, currentAlpha);
+                float targetAlpha = CalculateTargetAlpha(candidate, effectiveSetting, physicallyHovered, currentAlpha);
 
-                // Smoothly interpolate the opacity.
-                currentAlpha = MoveTowards(currentAlpha, targetAlpha, Config.TransitionSpeed * (float)Framework.UpdateDelta.TotalSeconds);
+                bool isHoverState = (candidate.state == State.Hover);
+
+                // If physically hovered, or if we are still finishing the hover
+                if (physicallyHovered || _finishingHover.TryGetValue(addonName, out bool finishing) && finishing)
+                {
+
+                    if (isHoverState)
+                        _finishingHover[addonName] = true;
+
+                    // If we haven't reached the full hover alpha yet, keep finishing
+                    if (currentAlpha < candidate.Opacity - 0.001f)
+                    {
+                        // Force the candidate to remain in hover state
+                        // so we don't revert mid-fade if user unhovers
+                        isHoverState = true;
+                        targetAlpha = candidate.Opacity;
+                    }
+                    else
+                    {
+                        if (!physicallyHovered)
+                            _finishingHover[addonName] = false;
+                    }
+                }
+                else
+                {
+                    // If not physically hovered and not finishing,
+                    // we do normal logic (no forced hover).
+                    _finishingHover[addonName] = false;
+                }
+
+                // Interpolate alpha
+                float transitionSpeed = (targetAlpha > currentAlpha)
+                    ? Config.EnterTransitionSpeed
+                    : Config.ExitTransitionSpeed;
+
+                currentAlpha = MoveTowards(currentAlpha, targetAlpha, transitionSpeed * (float)Framework.UpdateDelta.TotalSeconds);
                 _currentAlphas[addonName] = currentAlpha;
                 Addon.SetAddonOpacity(addonName, currentAlpha);
 
-                // Update visibility based on effective setting and current alpha.
-                Addon.SetAddonVisibility(addonName, effectiveSetting == Setting.Show || currentAlpha >= 0.05f);
+                // Only hide if default is set to Hide and alpha < 0.05, etc.
+                bool defaultDisabled = (candidate.state == State.Default && candidate.setting == Setting.Hide);
+                bool hidden = false;
+                if (defaultDisabled && currentAlpha < 0.05f)
+                    hidden = true;
+
+                Addon.SetAddonVisibility(addonName, !hidden);
             }
         }
     }
+
 
     /// <summary>
     /// Determine the configuration candidate for an addon given its element config.
     /// </summary>
     private ConfigEntry GetCandidateConfig(string addonName, List<ConfigEntry> elementConfig, DateTime now, bool isHovered)
+{
+    // If hovered, try to get the Hover entry.
+    ConfigEntry? candidate = isHovered
+        ? elementConfig.FirstOrDefault(e => e.state == State.Hover)
+        : null;
+
+    // If no hover candidate, choose a non-hover active state or fallback to default.
+    if (candidate == null)
     {
-        // 1. If hovered, try to get the Hover entry.
-        ConfigEntry? candidate = isHovered
-            ? elementConfig.FirstOrDefault(e => e.state == State.Hover)
-            : null;
-
-        // 2. If no hover candidate, choose a non-hover active state or fallback to default.
-        if (candidate == null)
-        {
-            candidate = elementConfig.FirstOrDefault(e => _stateMap[e.state] && e.state != State.Hover)
-                        ?? elementConfig.FirstOrDefault(e => e.state == State.Default);
-        }
-
-        // 3. If non-default, record state for delay purposes.
-        if (candidate != null && candidate.state != State.Default)
-        {
-            _delayManager.RecordNonDefaultState(addonName, candidate, now);
-        }
-        // 4. If default and delay is enabled, use the delayed state if within the delay period.
-        else if (candidate != null && candidate.state == State.Default && Config.DefaultDelayEnabled)
-        {
-            candidate = _delayManager.GetDelayedConfig(addonName, candidate, now, Config.DefaultDelay);
-        }
-        return candidate;
+        candidate = elementConfig.FirstOrDefault(e => _stateMap[e.state] && e.state != State.Hover)
+                    ?? elementConfig.FirstOrDefault(e => e.state == State.Default);
     }
+
+    // If non-default, record state for delay purposes.
+    if (candidate != null && candidate.state != State.Default)
+    {
+        _delayManager.RecordNonDefaultState(addonName, candidate, now);
+
+        // **Force non-default states to Show** if they are Hide in config.
+        if (candidate.setting == Setting.Hide)
+        {
+            candidate.setting = Setting.Show;
+        }
+    }
+    // If default and delay is enabled, use the delayed state if within the delay period.
+    else if (candidate != null && candidate.state == State.Default && Config.DefaultDelayEnabled)
+    {
+        candidate = _delayManager.GetDelayedConfig(addonName, candidate, now, Config.DefaultDelay);
+    }
+
+    return candidate!;
+}
+
 
     /// <summary>
     /// Determines the effective setting for an addon.
