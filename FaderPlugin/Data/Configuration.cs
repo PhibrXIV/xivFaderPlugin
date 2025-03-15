@@ -32,8 +32,8 @@ public class Configuration : IPluginConfiguration
     public bool EmoteActivity { get; set; } = false;
     public bool ImportantActivity { get; set; } = false;
     public float DefaultAlpha { get; set; } = 1.0f;
-    public float EnterTransitionSpeed { get; set; } = 3.0f; // change in alpha per frame when fading in
-    public float ExitTransitionSpeed { get; set; } = 0.5f; // change in alpha per frame when fading out
+    public float EnterTransitionSpeed { get; set; } = 4.0f; // alpha change per frame when fading in
+    public float ExitTransitionSpeed { get; set; } = 1.0f; // alpha change per frame when fading out (1.0f = 1 second for full transition)
 
 
     public void Initialize()

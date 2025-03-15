@@ -538,6 +538,15 @@ namespace faderPlugin.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Opacity.
+        /// </summary>
+        internal static string Opacity {
+            get {
+                return ResourceManager.GetString("Opacity", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to seconds.
         /// </summary>
         internal static string Seconds {
@@ -574,6 +583,24 @@ namespace faderPlugin.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Disable Element.
+        /// </summary>
+        internal static string SettingsDisable {
+            get {
+                return ResourceManager.GetString("SettingsDisable", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Fully disables element at low opacity. Unchecked means the element remains interactable even when fully invisible..
+        /// </summary>
+        internal static string SettingsDisableTooltip {
+            get {
+                return ResourceManager.GetString("SettingsDisableTooltip", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to {0} Configuration.
         /// </summary>
         internal static string SettingsElementConfiguration {
@@ -588,6 +615,42 @@ namespace faderPlugin.Resources {
         internal static string SettingsEmoteActivity {
             get {
                 return ResourceManager.GetString("SettingsEmoteActivity", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Fade In time:.
+        /// </summary>
+        internal static string SettingsEnterTransition {
+            get {
+                return ResourceManager.GetString("SettingsEnterTransition", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Time in ms it takes for an element to fade in..
+        /// </summary>
+        internal static string SettingsEnterTransitionTooltip {
+            get {
+                return ResourceManager.GetString("SettingsEnterTransitionTooltip", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Fade Out time:.
+        /// </summary>
+        internal static string SettingsExitTransition {
+            get {
+                return ResourceManager.GetString("SettingsExitTransition", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Time in ms it takes for an element to fade out..
+        /// </summary>
+        internal static string SettingsExitTransitionTooltip {
+            get {
+                return ResourceManager.GetString("SettingsExitTransitionTooltip", resourceCulture);
             }
         }
         
@@ -886,6 +949,15 @@ namespace faderPlugin.Resources {
         internal static string StateUserFocus {
             get {
                 return ResourceManager.GetString("StateUserFocus", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Warning: Disabled Elements cannot be hovered!.
+        /// </summary>
+        internal static string StateWarning {
+            get {
+                return ResourceManager.GetString("StateWarning", resourceCulture);
             }
         }
         

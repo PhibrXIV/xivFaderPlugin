@@ -403,4 +403,28 @@ Configuration of the element that was selected first will override the rest.</va
   <data name="Milliseconds" xml:space="preserve">
     <value>milliseconds</value>
   </data>
+  <data name="Opacity" xml:space="preserve">
+    <value>Opacity</value>
+  </data>
+  <data name="SettingsDisable" xml:space="preserve">
+    <value>Disable Element</value>
+  </data>
+  <data name="SettingsDisableTooltip" xml:space="preserve">
+    <value>Fully disables element at low opacity. Unchecked means the element remains interactable even when fully invisible.</value>
+  </data>
+  <data name="SettingsEnterTransition" xml:space="preserve">
+    <value>Fade In time:</value>
+  </data>
+  <data name="SettingsEnterTransitionTooltip" xml:space="preserve">
+    <value>Time in ms it takes for an element to fade in.</value>
+  </data>
+  <data name="SettingsExitTransition" xml:space="preserve">
+    <value>Fade Out time:</value>
+  </data>
+  <data name="SettingsExitTransitionTooltip" xml:space="preserve">
+    <value>Time in ms it takes for an element to fade out.</value>
+  </data>
+  <data name="StateWarning" xml:space="preserve">
+    <value>Warning: Disabled Elements cannot be hovered!</value>
+  </data>
 </root>

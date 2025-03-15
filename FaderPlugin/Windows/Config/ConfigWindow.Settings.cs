@@ -29,7 +29,6 @@ public partial class ConfigWindow
 
         #region General Settings
 
-        // --- GENERAL SETTINGS HEADER ---
         if (ImGui.CollapsingHeader(Language.SettingsGeneralHeader, ImGuiTreeNodeFlags.DefaultOpen))
         {
             // Create a 2-column table to align labels and controls.
@@ -41,7 +40,7 @@ public partial class ConfigWindow
                 ImGui.TableSetupColumn("Control", ImGuiTableColumnFlags.WidthFixed, 220.0f * ImGuiHelpers.GlobalScale);
 
                 //
-                // 1) Focus Key
+                // Focus Key
                 //
                 ImGui.TableNextRow();
                 ImGui.TableNextColumn();
@@ -66,7 +65,7 @@ public partial class ConfigWindow
                 }
 
                 //
-                // 2) Always User Focus when hotbars are unlocked
+                // Always User Focus when hotbars are unlocked
                 //
                 ImGui.TableNextRow();
                 ImGui.TableNextColumn();
@@ -83,7 +82,7 @@ public partial class ConfigWindow
                 }
 
                 //
-                // 3) Emotes trigger chat activity
+                // Emotes trigger chat activity
                 //
                 ImGui.TableNextRow();
                 ImGui.TableNextColumn();
@@ -99,7 +98,7 @@ public partial class ConfigWindow
                 }
 
                 //
-                // 4) System messages trigger chat activity
+                // System messages trigger chat activity
                 //
                 ImGui.TableNextRow();
                 ImGui.TableNextColumn();
@@ -115,7 +114,7 @@ public partial class ConfigWindow
                 }
 
                 //
-                // 5) Default Delay (Label)
+                // Default Delay
                 //
                 ImGui.TableNextRow();
                 ImGui.TableNextColumn();
@@ -143,7 +142,7 @@ public partial class ConfigWindow
                 }
 
                 //
-                // 6) Chat Activity Timeout
+                // Chat Activity Timeout
                 //
                 ImGui.TableNextRow();
                 ImGui.TableNextColumn();
@@ -159,12 +158,12 @@ public partial class ConfigWindow
                 }
 
                 //
-                // 7) Enter Transition Time (ms)
+                // Enter Transition Time
                 //
                 ImGui.TableNextRow();
                 ImGui.TableNextColumn();
-                ImGui.TextUnformatted("Enter Transition Time:");
-                ImGuiComponents.HelpMarker("Time in ms for an element to fade in (snappy appearance).");
+                ImGui.TextUnformatted(Language.SettingsEnterTransition);
+                ImGuiComponents.HelpMarker(Language.SettingsEnterTransitionTooltip);
 
                 ImGui.TableNextColumn();
                 ImGui.SetNextItemWidth(-1);
@@ -179,12 +178,12 @@ public partial class ConfigWindow
                 }
 
                 //
-                // 8) Exit Transition Time (ms)
+                // Exit Transition Time
                 //
                 ImGui.TableNextRow();
                 ImGui.TableNextColumn();
-                ImGui.TextUnformatted("Exit Transition Time:");
-                ImGuiComponents.HelpMarker("Time in ms for an element to fade out (slow disappearance).");
+                ImGui.TextUnformatted(Language.SettingsExitTransition);
+                ImGuiComponents.HelpMarker(Language.SettingsExitTransitionTooltip);
 
                 ImGui.TableNextColumn();
                 ImGui.SetNextItemWidth(-1);
@@ -314,6 +313,7 @@ public partial class ConfigWindow
                 var stateName = StateUtil.GetStateName(elementState);
                 if (elementState == State.Default)
                 {
+                    ImGui.NewLine();
                     var pos = ImGui.GetCursorPos();
                     ImGui.TextUnformatted(stateName);
                     ImGui.SetCursorPos(pos with { X = pos.X + itemWidth + ImGui.GetStyle().ItemSpacing.X });
@@ -345,7 +345,7 @@ public partial class ConfigWindow
                     float opacity = SelectedConfig[i].Opacity;
                     ImGui.SameLine();
                     ImGui.SetNextItemWidth(itemWidth);
-                    if (ImGui.SliderFloat($"##{elementName}-{i}-opacity", ref opacity, 0.0f, 1.0f, "Opacity: %.2f"))
+                    if (ImGui.SliderFloat($"##{elementName}-{i}-opacity", ref opacity, 0.0f, 1.0f, $"{Language.Opacity}: %.2f"))
                     {
                         SelectedConfig[i].Opacity = opacity;
                         // If the opacity is increased above 0.05 while the element is disabled, force Show
@@ -368,8 +368,8 @@ public partial class ConfigWindow
                         SaveSelectedElementsConfig();
                     }
                     ImGui.SameLine();
-                    ImGui.TextUnformatted("Disable Element");
-                    ImGuiComponents.HelpMarker("Check to disable this element at low opacity. Unchecked means it remains interactive even if nearly invisible.");
+                    ImGui.TextUnformatted(Language.SettingsDisable);
+                    ImGuiComponents.HelpMarker(Language.SettingsDisableTooltip);
                 }
 
                 // If not default, show reordering & delete buttons
@@ -439,7 +439,7 @@ public partial class ConfigWindow
                 if (defaultDisabled && hoverPresent)
                 {
                     ImGui.Separator();
-                    ImGui.TextColored(ImGuiColors.DalamudRed, "Warning: Disabled Elements cannot be hovered!");
+                    ImGui.TextColored(ImGuiColors.DalamudRed, Language.StateWarning);
                 }
             }
         }

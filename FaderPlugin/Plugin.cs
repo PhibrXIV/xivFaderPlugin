@@ -51,16 +51,18 @@ public class Plugin : IDalamudPlugin
     private readonly Timer _chatActivityTimer = new();
     private bool _hasChatActivity;
 
-    // Commands and opacity state.
-    private const string CommandName = "/pfader";
-    private bool _enabled = true;
+    // Opacity Management
     private readonly Dictionary<string, float> _currentAlphas = new();
     private readonly Dictionary<string, bool> _finishingHover = new();
+
+    // Commands
+    private const string CommandName = "/pfader";
+    private bool _enabled = true;
 
     // Territory Excel sheet.
     private readonly ExcelSheet<TerritoryType> _territorySheet;
 
-    // Delay management is now handled by a separate utility class.
+    // Delay management Utility
     private readonly DelayManager _delayManager = new DelayManager();
 
     public Plugin()
@@ -73,7 +75,6 @@ public class Plugin : IDalamudPlugin
 
         _territorySheet = Data.GetExcelSheet<TerritoryType>();
 
-        // Subscribe to events.
         Framework.Update += OnFrameworkUpdate;
         PluginInterface.UiBuilder.Draw += DrawUi;
         PluginInterface.UiBuilder.OpenConfigUi += DrawConfigUi;
@@ -83,20 +84,19 @@ public class Plugin : IDalamudPlugin
             HelpMessage = "Opens settings\n't' toggles whether it's enabled.\n'on' enables the plugin\n'off' disables the plugin."
         });
 
-        // Initialise state map.
         foreach (State state in Enum.GetValues(typeof(State)))
             _stateMap[state] = state == State.Default;
 
-        // Idle timer: fire only once when idling.
+        // We don't want a looping timer, only once
         _idleTimer.AutoReset = false;
         _idleTimer.Elapsed += (_, _) => _hasIdled = true;
         _idleTimer.Start();
 
-        // Chat activity timer.
         _chatActivityTimer.Elapsed += (_, _) => _hasChatActivity = false;
         ChatGui.ChatMessage += OnChatMessage;
         PluginInterface.LanguageChanged += LanguageChanged;
 
+        // Recover from previous misconfiguration
         if (Config.DefaultDelay == 0)
             Config.DefaultDelay = 2000;
     }
@@ -173,7 +173,7 @@ public class Plugin : IDalamudPlugin
 
     private void OnChatMessage(XivChatType type, int _, ref SeString sender, ref SeString message, ref bool isHandled)
     {
-        // Only trigger on specific chat types.
+        // Don't trigger chat for non-standard chat channels.
         if (!Constants.ActiveChatTypes.Contains(type)
             && (!Config.ImportantActivity || !Constants.ImportantChatTypes.Contains(type))
             && (!Config.EmoteActivity || !Constants.EmoteChatTypes.Contains(type)))
@@ -273,9 +273,6 @@ public class Plugin : IDalamudPlugin
 
     #region Opacity & Visibility Management
 
-    /// <summary>
-    /// Update each addon's opacity based on the current states and configuration.
-    /// </summary>
     private void UpdateAddonOpacity()
     {
         if (!IsSafeToWork())
@@ -333,7 +330,7 @@ public class Plugin : IDalamudPlugin
                     if (isHoverState)
                         _finishingHover[addonName] = true;
 
-                    // If we haven't reached the full hover alpha yet, keep finishing
+                    // If we haven't reached the full hover alpha yet, keep going
                     if (currentAlpha < candidate.Opacity - 0.001f)
                     {
                         // Force the candidate to remain in hover state
@@ -375,9 +372,6 @@ public class Plugin : IDalamudPlugin
     }
 
 
-    /// <summary>
-    /// Determine the configuration candidate for an addon given its element config.
-    /// </summary>
     private ConfigEntry GetCandidateConfig(string addonName, List<ConfigEntry> elementConfig, DateTime now, bool isHovered)
 {
     // If hovered, try to get the Hover entry.
@@ -397,7 +391,7 @@ public class Plugin : IDalamudPlugin
     {
         _delayManager.RecordNonDefaultState(addonName, candidate, now);
 
-        // **Force non-default states to Show** if they are Hide in config.
+        // **Force non-default states to Show** if they are Hide in config ( should only be relevant for existing configs )
         if (candidate.setting == Setting.Hide)
         {
             candidate.setting = Setting.Show;
@@ -413,9 +407,6 @@ public class Plugin : IDalamudPlugin
 }
 
 
-    /// <summary>
-    /// Determines the effective setting for a ConfigEntry.
-    /// </summary>
     private Setting GetEffectiveSetting(ConfigEntry candidate)
     {
         if (!_enabled || Addon.IsHudManagerOpen())
@@ -425,21 +416,17 @@ public class Plugin : IDalamudPlugin
         return Setting.Hide;
     }
 
-    /// <summary>
-    /// Computes the target opacity for an addon based on its candidate config and state.
-    /// </summary>
     private float CalculateTargetAlpha(ConfigEntry candidate, Setting effectiveSetting, bool isHovered, float currentAlpha)
     {
         if (candidate.state == State.Hover)
         {
-            // For hover state, if currently hovered, use the candidate opacity; else, maintain current.
             return isHovered ? candidate.Opacity : currentAlpha;
         }
         return (effectiveSetting == Setting.Show) ? candidate.Opacity : 0.0f;
     }
 
     /// <summary>
-    /// Smoothly moves current value toward target value.
+    /// Smoothly moves current value toward target value. TODO: add easing functions perhaps?
     /// </summary>
     private float MoveTowards(float current, float target, float maxDelta)
     {
@@ -468,6 +455,9 @@ public class Plugin : IDalamudPlugin
                mousePos.Y >= posY && mousePos.Y <= posY + height;
     }
 
+    /// <summary>
+    /// Forces all elements to be visible and fully opaque.
+    /// </summary>
     private void ForceShowAllElements()
     {
         foreach (Element element in Enum.GetValues(typeof(Element)))
