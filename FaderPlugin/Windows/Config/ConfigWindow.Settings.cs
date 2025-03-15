@@ -444,13 +444,17 @@ public partial class ConfigWindow
             }
         }
     }
-        #endregion
+    #endregion
 
     private void SaveSelectedElementsConfig()
     {
         foreach (var element in SelectedElements)
-            Configuration.elementsConfig[element] = SelectedConfig;
-
+        {
+            Configuration.elementsConfig[element] = SelectedConfig
+                .Select(entry => new ConfigEntry(entry.state, entry.setting) { Opacity = entry.Opacity })
+                .ToList();
+        }
         Configuration.Save();
     }
+
 }

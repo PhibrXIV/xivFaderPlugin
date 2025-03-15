@@ -138,12 +138,12 @@ public static unsafe class Addon
 
     private static bool IsAddonFocused(string name)
     {
-        foreach (var entry in Stage->RaptureAtkUnitManager->AtkUnitManager.FocusedUnitsList.Entries)
+        foreach (var addon in Stage->RaptureAtkUnitManager->AtkUnitManager.FocusedUnitsList.Entries)
         {
-            if (entry.Value == null || entry.Value->Name == null)
+            if (addon.Value == null || addon.Value->Name == null)
                 continue;
 
-            if (name.Equals(entry.Value->NameString))
+            if (name.Equals(addon.Value->NameString))
                 return true;
         }
         return false;
