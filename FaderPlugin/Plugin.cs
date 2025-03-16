@@ -20,7 +20,6 @@ using Lumina.Excel;
 using Lumina.Excel.Sheets;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using ImGuiNET;
-using FaderPlugin.Utils;
 using System.Numerics;
 
 namespace FaderPlugin;
@@ -38,7 +37,6 @@ public class Plugin : IDalamudPlugin
     [PluginService] public static IGameGui GameGui { get; set; } = null!;
     [PluginService] public static ITargetManager TargetManager { get; set; } = null!;
     [PluginService] public static IDataManager Data { get; private set; } = null!;
-
     // Configuration and windows.
     public readonly Configuration Config;
     private readonly WindowSystem _windowSystem = new("Fader");
@@ -47,13 +45,16 @@ public class Plugin : IDalamudPlugin
     // State maps and timers.
     private readonly Dictionary<State, bool> _stateMap = new();
     private bool _stateChanged;
-    private readonly Timer _chatActivityTimer = new();
-    private bool _hasChatActivity;
+    private DateTime _lastChatActivity = DateTime.MinValue;
     private Dictionary<string, bool> _addonHoverStates = new Dictionary<string, bool>();
+    private HashSet<string> _previousHoveredAddons = new();
     private readonly Dictionary<string, Element> _addonNameToElement = new();
+    private DateTime _opacityUpdateEndTime = DateTime.MinValue;
+    private bool _opacityUpdateActive = false;
 
     // Opacity Management
     private readonly Dictionary<string, float> _currentAlphas = new();
+    private readonly Dictionary<string, float> _targetAlphas = new();
     private readonly Dictionary<string, bool> _finishingHover = new();
 
     // Commands
@@ -64,7 +65,8 @@ public class Plugin : IDalamudPlugin
     private readonly ExcelSheet<TerritoryType> _territorySheet;
 
     // Delay management Utility
-    private readonly DelayManager _delayManager = new DelayManager();
+    private readonly Dictionary<string, DateTime> _delayTimers = new();
+    private readonly Dictionary<string, ConfigEntry> _lastNonDefaultEntry = new();
 
     // Enum Cache
     private static readonly Element[] AllElements = Enum.GetValues<Element>();
@@ -105,7 +107,6 @@ public class Plugin : IDalamudPlugin
             }
         }
 
-        _chatActivityTimer.Elapsed += (_, _) => _hasChatActivity = false;
         ChatGui.ChatMessage += OnChatMessage;
         PluginInterface.LanguageChanged += LanguageChanged;
 
@@ -124,7 +125,6 @@ public class Plugin : IDalamudPlugin
         CommandManager.RemoveHandler(CommandName);
         ChatGui.ChatMessage -= OnChatMessage;
 
-        _chatActivityTimer.Dispose();
         _configWindow.Dispose();
         _windowSystem.RemoveWindow(_configWindow);
     }
@@ -179,37 +179,36 @@ public class Plugin : IDalamudPlugin
             && (!Config.EmoteActivity || !Constants.EmoteChatTypes.Contains(type)))
             return;
 
-        _hasChatActivity = true;
-        _chatActivityTimer.Stop();
-        _chatActivityTimer.Interval = Config.ChatActivityTimeout;
-        _chatActivityTimer.Start();
+        _lastChatActivity = DateTime.Now;
     }
+    private bool IsChatActive() =>
+    (DateTime.Now - _lastChatActivity).TotalMilliseconds < Config.ChatActivityTimeout;
 
-    private unsafe void OnFrameworkUpdate(IFramework framework)
+    private void OnFrameworkUpdate(IFramework framework)
     {
         if (!IsSafeToWork())
             return;
 
         _stateChanged = false;
         UpdateInputStates();
-
         UpdateMouseHoverState();
 
-        UpdateAddonOpacity();
+        if (_stateChanged || !DoAlphasMatch() || AnyDelayExpired())
+        {
+            UpdateAddonOpacity();
+        }
     }
-
 
     #region Input & State Management
 
     private void UpdateInputStates()
     {
-        // Update states based on key, chat, movement, combat, etc.
         UpdateState(State.UserFocus, KeyState[Config.OverrideKey] || (Config.FocusOnHotbarsUnlock && !Addon.AreHotbarsLocked()));
         UpdateState(State.AltKeyFocus, KeyState[(int)Constants.OverrideKeys.Alt]);
         UpdateState(State.CtrlKeyFocus, KeyState[(int)Constants.OverrideKeys.Ctrl]);
         UpdateState(State.ShiftKeyFocus, KeyState[(int)Constants.OverrideKeys.Shift]);
         UpdateState(State.ChatFocus, Addon.IsChatFocused());
-        UpdateState(State.ChatActivity, _hasChatActivity);
+        UpdateState(State.ChatActivity, IsChatActive());
         UpdateState(State.IsMoving, Addon.IsMoving());
         UpdateState(State.Combat, Condition[ConditionFlag.InCombat]);
         UpdateState(State.WeaponUnsheathed, Addon.IsWeaponUnsheathed());
@@ -232,6 +231,18 @@ public class Plugin : IDalamudPlugin
                           || Condition[ConditionFlag.BoundByDuty56]
                           || Condition[ConditionFlag.BoundByDuty95];
         UpdateState(State.Duty, !inIslandSanctuary && boundByDuty);
+
+        var occupied = Condition[ConditionFlag.Occupied]
+          || Condition[ConditionFlag.Occupied30]
+          || Condition[ConditionFlag.Occupied33]
+          || Condition[ConditionFlag.Occupied38]
+          || Condition[ConditionFlag.Occupied39]
+          || Condition[ConditionFlag.OccupiedInCutSceneEvent]
+          || Condition[ConditionFlag.OccupiedInEvent]
+          || Condition[ConditionFlag.OccupiedSummoningBell]
+          || Condition[ConditionFlag.OccupiedInQuestEvent];
+
+        UpdateState(State.Occupied, occupied);
     }
 
     /// <summary>
@@ -252,10 +263,24 @@ public class Plugin : IDalamudPlugin
 
     private void UpdateMouseHoverState()
     {
+        // Update the hover states for all addons.
         UpdateHoverStates();
-        bool hoverDetected = _addonHoverStates.Values.Any(hovered => hovered);
+
+        var currentHovered = new HashSet<string>(
+            _addonHoverStates.Where(kvp => kvp.Value).Select(kvp => kvp.Key)
+        );
+
+        if (!currentHovered.SetEquals(_previousHoveredAddons))
+        {
+            _stateChanged = true;
+        }
+
+        _previousHoveredAddons = currentHovered;
+
+        bool hoverDetected = currentHovered.Any();
         UpdateState(State.Hover, hoverDetected);
     }
+
 
 
     private void UpdateState(State state, bool value)
@@ -288,12 +313,15 @@ public class Plugin : IDalamudPlugin
             return;
         }
 
-        if (!Config.DefaultDelayEnabled)
-            _delayManager.ClearAll();
+            // If delay is disabled, clear any stored delay state.
+            if (!Config.DefaultDelayEnabled)
+        {
+            _delayTimers.Clear();
+            _lastNonDefaultEntry.Clear();
+        }
 
         foreach (var addonName in _addonNameToElement.Keys)
         {
-            // Retrieve the associated element for config purposes.
             var element = _addonNameToElement[addonName];
             var elementConfig = Config.GetElementConfig(element);
             bool isHovered = _addonHoverStates.TryGetValue(addonName, out bool hovered) && hovered;
@@ -303,6 +331,8 @@ public class Plugin : IDalamudPlugin
 
             float currentAlpha = _currentAlphas.TryGetValue(addonName, out var alpha) ? alpha : Config.DefaultAlpha;
             float targetAlpha = CalculateTargetAlpha(candidate, effectiveSetting, isHovered, currentAlpha);
+
+            _targetAlphas[addonName] = targetAlpha;
 
             bool isHoverState = (candidate.state == State.Hover);
 
@@ -315,6 +345,7 @@ public class Plugin : IDalamudPlugin
                 {
                     isHoverState = true;
                     targetAlpha = candidate.Opacity;
+                    _targetAlphas[addonName] = targetAlpha;
                 }
                 else if (!isHovered)
                 {
@@ -343,33 +374,48 @@ public class Plugin : IDalamudPlugin
 
     private ConfigEntry GetCandidateConfig(string addonName, List<ConfigEntry> elementConfig, bool isHovered)
     {
-        // If hovered, try to get the Hover entry.
+        // Prefer Hover state when applicable.
         ConfigEntry? candidate = isHovered
             ? elementConfig.FirstOrDefault(e => e.state == State.Hover)
             : null;
 
-        // If no hover candidate, choose a non-hover active state or fallback to default.
+        // Fallback: choose an active non-hover state or default.
         if (candidate == null)
         {
             candidate = elementConfig.FirstOrDefault(e => _stateMap[e.state] && e.state != State.Hover)
                         ?? elementConfig.FirstOrDefault(e => e.state == State.Default);
         }
+
         var now = DateTime.Now;
-        // If non-default, record state for delay purposes.
         if (candidate != null && candidate.state != State.Default)
         {
-            _delayManager.RecordNonDefaultState(addonName, candidate, now);
+            // Record the non-default state with a timestamp.
+            _delayTimers[addonName] = now;
+            _lastNonDefaultEntry[addonName] = candidate;
 
-            // **Force non-default states to Show** if they are Hide in config ( should only be relevant for existing configs )
+            // Force non-default states to Show.
             if (candidate.setting == Setting.Hide)
             {
                 candidate.setting = Setting.Show;
             }
         }
-        // If default and delay is enabled, use the delayed state if within the delay period.
         else if (candidate != null && candidate.state == State.Default && Config.DefaultDelayEnabled)
         {
-            candidate = _delayManager.GetDelayedConfig(addonName, candidate, now, Config.DefaultDelay);
+            // Check if there's a recent non-default state that should be used.
+            if (_delayTimers.TryGetValue(addonName, out var start) &&
+                (now - start).TotalMilliseconds < Config.DefaultDelay)
+            {
+                if (_lastNonDefaultEntry.TryGetValue(addonName, out var nonDefault))
+                {
+                    candidate = nonDefault;
+                }
+            }
+            else
+            {
+                // Delay expired; clear stored values.
+                _delayTimers.Remove(addonName);
+                _lastNonDefaultEntry.Remove(addonName);
+            }
         }
 
         return candidate!;
@@ -436,9 +482,34 @@ public class Plugin : IDalamudPlugin
 
     #endregion
 
+    #region Helper Methods
+    private bool DoAlphasMatch()
+    {
+        // Check if both dictionaries have the same number of entries.
+        if (_targetAlphas.Count != _currentAlphas.Count)
+            return false;
+
+        foreach (var kvp in _targetAlphas)
+        {
+            if (!_currentAlphas.TryGetValue(kvp.Key, out float currentAlpha) ||
+                Math.Abs(currentAlpha - kvp.Value) > 0.001f)
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private bool AnyDelayExpired()
+    {
+        var now = DateTime.Now;
+        return _delayTimers.Values.Any(timer => (now - timer).TotalMilliseconds >= Config.DefaultDelay);
+    }
 
     /// <summary>
     /// Checks if it is safe for the plugin to perform work.
     /// </summary>
     private bool IsSafeToWork() => !Condition[ConditionFlag.BetweenAreas] && ClientState.IsLoggedIn;
+
+    #endregion
 }

@@ -28,7 +28,8 @@ public enum State
     InSanctuary = 18,
     InFate = 19,
     IsMoving = 20,
-    Hover = 21
+    Hover = 21,
+    Occupied = 22,
 }
 
 
