@@ -49,6 +49,8 @@ public class Plugin : IDalamudPlugin
     private bool _stateChanged;
     private readonly Timer _chatActivityTimer = new();
     private bool _hasChatActivity;
+    private Dictionary<string, bool> _addonHoverStates = new Dictionary<string, bool>();
+    private readonly Dictionary<string, Element> _addonNameToElement = new();
 
     // Opacity Management
     private readonly Dictionary<string, float> _currentAlphas = new();
@@ -90,6 +92,19 @@ public class Plugin : IDalamudPlugin
         foreach (State state in AllStates)
             _stateMap[state] = state == State.Default;
 
+        foreach (var element in AllElements)
+        {
+            if (element.ShouldIgnoreElement())
+                continue;
+
+            var addonNames = ElementUtil.GetAddonName(element);
+            foreach (var addonName in addonNames)
+            {
+                if (!_addonNameToElement.ContainsKey(addonName))
+                    _addonNameToElement.Add(addonName, element);
+            }
+        }
+
         _chatActivityTimer.Elapsed += (_, _) => _hasChatActivity = false;
         ChatGui.ChatMessage += OnChatMessage;
         PluginInterface.LanguageChanged += LanguageChanged;
@@ -114,7 +129,6 @@ public class Plugin : IDalamudPlugin
         _windowSystem.RemoveWindow(_configWindow);
     }
 
-    #region Language & Config Loading
 
     private void LanguageChanged(string langCode)
     {
@@ -130,17 +144,10 @@ public class Plugin : IDalamudPlugin
         configuration.Initialize();
     }
 
-    #endregion
-
-    #region UI Drawing
-
     private void DrawUi() => _windowSystem.Draw();
 
     private void DrawConfigUi() => _configWindow.Toggle();
 
-    #endregion
-
-    #region Command Handling
 
     private void FaderCommandHandler(string s, string arguments)
     {
@@ -164,10 +171,6 @@ public class Plugin : IDalamudPlugin
         }
     }
 
-    #endregion
-
-    #region Chat & Update Event Handlers
-
     private void OnChatMessage(XivChatType type, int _, ref SeString sender, ref SeString message, ref bool isHandled)
     {
         // Don't trigger chat for non-standard chat channels.
@@ -189,12 +192,12 @@ public class Plugin : IDalamudPlugin
 
         _stateChanged = false;
         UpdateInputStates();
+
         UpdateMouseHoverState();
 
         UpdateAddonOpacity();
     }
 
-    #endregion
 
     #region Input & State Management
 
@@ -231,28 +234,29 @@ public class Plugin : IDalamudPlugin
         UpdateState(State.Duty, !inIslandSanctuary && boundByDuty);
     }
 
-    private unsafe void UpdateMouseHoverState()
+    /// <summary>
+    /// Collects all addon hover states
+    /// </summary>
+    private void UpdateHoverStates()
     {
-        // Cache mouse position
         var mousePos = ImGui.GetMousePos();
-        // Check all element addons for mouse hover.
-        bool hoverDetected = false;
-        foreach (var element in AllElements)
+        _addonHoverStates.Clear();
+
+        foreach (var addonName in _addonNameToElement.Keys)
         {
-            var addonNames = ElementUtil.GetAddonName(element);
-            foreach (var addonName in addonNames)
-            {
-                if (IsAddonHovered(addonName, mousePos))
-                {
-                    hoverDetected = true;
-                    break;
-                }
-            }
-            if (hoverDetected)
-                break;
+            // Compute the hover state once per addon.
+            _addonHoverStates[addonName] = IsAddonHovered(addonName, mousePos);
         }
+    }
+
+
+    private void UpdateMouseHoverState()
+    {
+        UpdateHoverStates();
+        bool hoverDetected = _addonHoverStates.Values.Any(hovered => hovered);
         UpdateState(State.Hover, hoverDetected);
     }
+
 
     private void UpdateState(State state, bool value)
     {
@@ -274,22 +278,12 @@ public class Plugin : IDalamudPlugin
 
         bool forceShow = !_enabled || Addon.IsHudManagerOpen();
 
-        // When forceShow is active, only update hide/show but leave opacities untouched.
         if (forceShow)
         {
-            foreach (var element in AllElements)
+            foreach (var addonName in _addonNameToElement.Keys)
             {
-                if (element.ShouldIgnoreElement())
-                    continue;
-
-                var addonNames = ElementUtil.GetAddonName(element);
-                foreach (var addonName in addonNames)
-                {
-                    // Force show
-                    Addon.SetAddonVisibility(addonName, true);
-                    // Also reset finishingHover
-                    _finishingHover[addonName] = false;
-                }
+                Addon.SetAddonVisibility(addonName, true);
+                _finishingHover[addonName] = false;
             }
             return;
         }
@@ -297,78 +291,57 @@ public class Plugin : IDalamudPlugin
         if (!Config.DefaultDelayEnabled)
             _delayManager.ClearAll();
 
-        var now = DateTime.Now;
-        // Cache mouse position once
-        var mousePos = ImGui.GetMousePos();
-        foreach (var element in AllElements)
+        foreach (var addonName in _addonNameToElement.Keys)
         {
-            if (element.ShouldIgnoreElement())
-                continue;
-
-            var addonNames = ElementUtil.GetAddonName(element);
+            // Retrieve the associated element for config purposes.
+            var element = _addonNameToElement[addonName];
             var elementConfig = Config.GetElementConfig(element);
+            bool isHovered = _addonHoverStates.TryGetValue(addonName, out bool hovered) && hovered;
 
-            foreach (var addonName in addonNames)
+            ConfigEntry candidate = GetCandidateConfig(addonName, elementConfig, isHovered);
+            Setting effectiveSetting = GetEffectiveSetting(candidate);
+
+            float currentAlpha = _currentAlphas.TryGetValue(addonName, out var alpha) ? alpha : Config.DefaultAlpha;
+            float targetAlpha = CalculateTargetAlpha(candidate, effectiveSetting, isHovered, currentAlpha);
+
+            bool isHoverState = (candidate.state == State.Hover);
+
+            if (isHovered || (_finishingHover.TryGetValue(addonName, out bool finishing) && finishing))
             {
-                bool physicallyHovered = IsAddonHovered(addonName, mousePos);
-                ConfigEntry candidate = GetCandidateConfig(addonName, elementConfig, now, physicallyHovered);
-                Setting effectiveSetting = GetEffectiveSetting(candidate);
+                if (isHoverState)
+                    _finishingHover[addonName] = true;
 
-                float currentAlpha = _currentAlphas.TryGetValue(addonName, out var alpha) ? alpha : Config.DefaultAlpha;
-                float targetAlpha = CalculateTargetAlpha(candidate, effectiveSetting, physicallyHovered, currentAlpha);
-
-                bool isHoverState = (candidate.state == State.Hover);
-
-                // If physically hovered, or if we are still finishing the hover
-                if (physicallyHovered || _finishingHover.TryGetValue(addonName, out bool finishing) && finishing)
+                if (currentAlpha < candidate.Opacity - 0.001f)
                 {
-
-                    if (isHoverState)
-                        _finishingHover[addonName] = true;
-
-                    // If we haven't reached the full hover alpha yet, keep going
-                    if (currentAlpha < candidate.Opacity - 0.001f)
-                    {
-                        // Force the candidate to remain in hover state
-                        // so we don't revert mid-fade if user unhovers
-                        isHoverState = true;
-                        targetAlpha = candidate.Opacity;
-                    }
-                    else
-                    {
-                        if (!physicallyHovered)
-                            _finishingHover[addonName] = false;
-                    }
+                    isHoverState = true;
+                    targetAlpha = candidate.Opacity;
                 }
-                else
+                else if (!isHovered)
                 {
-                    // If not physically hovered and not finishing,
-                    // we do normal logic (no forced hover).
                     _finishingHover[addonName] = false;
                 }
-
-                // Interpolate alpha
-                float transitionSpeed = (targetAlpha > currentAlpha)
-                    ? Config.EnterTransitionSpeed
-                    : Config.ExitTransitionSpeed;
-
-                currentAlpha = MoveTowards(currentAlpha, targetAlpha, transitionSpeed * (float)Framework.UpdateDelta.TotalSeconds);
-                _currentAlphas[addonName] = currentAlpha;
-                Addon.SetAddonOpacity(addonName, currentAlpha);
-
-                // Only hide if default is set to Hide and alpha < 0.05, etc.
-                bool defaultDisabled = (candidate.state == State.Default && candidate.setting == Setting.Hide);
-                bool hidden = false;
-                if (defaultDisabled && currentAlpha < 0.05f)
-                    hidden = true;
-
-                Addon.SetAddonVisibility(addonName, !hidden);
             }
+            else
+            {
+                _finishingHover[addonName] = false;
+            }
+
+            float transitionSpeed = (targetAlpha > currentAlpha)
+                ? Config.EnterTransitionSpeed
+                : Config.ExitTransitionSpeed;
+
+            currentAlpha = MoveTowards(currentAlpha, targetAlpha, transitionSpeed * (float)Framework.UpdateDelta.TotalSeconds);
+            _currentAlphas[addonName] = currentAlpha;
+            Addon.SetAddonOpacity(addonName, currentAlpha);
+
+            bool defaultDisabled = (candidate.state == State.Default && candidate.setting == Setting.Hide);
+            bool hidden = defaultDisabled && currentAlpha < 0.05f;
+            Addon.SetAddonVisibility(addonName, !hidden);
         }
     }
 
 
-    private ConfigEntry GetCandidateConfig(string addonName, List<ConfigEntry> elementConfig, DateTime now, bool isHovered)
+    private ConfigEntry GetCandidateConfig(string addonName, List<ConfigEntry> elementConfig, bool isHovered)
     {
         // If hovered, try to get the Hover entry.
         ConfigEntry? candidate = isHovered
@@ -381,7 +354,7 @@ public class Plugin : IDalamudPlugin
             candidate = elementConfig.FirstOrDefault(e => _stateMap[e.state] && e.state != State.Hover)
                         ?? elementConfig.FirstOrDefault(e => e.state == State.Default);
         }
-
+        var now = DateTime.Now;
         // If non-default, record state for delay purposes.
         if (candidate != null && candidate.state != State.Default)
         {
@@ -453,27 +426,16 @@ public class Plugin : IDalamudPlugin
     /// </summary>
     private void ForceShowAllElements()
     {
-        foreach (var element in AllElements)
+        foreach (var addonName in _addonNameToElement.Keys)
         {
-            if (element.ShouldIgnoreElement())
-                continue;
-
-            var addonNames = ElementUtil.GetAddonName(element);
-            if (addonNames.Length == 0)
-                continue;
-
-            foreach (var addonName in addonNames)
-            {
-                // Set opacity to maximum (fully visible)
-                Addon.SetAddonOpacity(addonName, 1.0f);
-                // Force the element to be visible.
-                Addon.SetAddonVisibility(addonName, true);
-            }
+            Addon.SetAddonOpacity(addonName, 1.0f);
+            Addon.SetAddonVisibility(addonName, true);
         }
     }
 
 
     #endregion
+
 
     /// <summary>
     /// Checks if it is safe for the plugin to perform work.
