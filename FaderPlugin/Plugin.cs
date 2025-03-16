@@ -47,8 +47,7 @@ public class Plugin : IDalamudPlugin
     // State maps and timers.
     private readonly Dictionary<State, bool> _stateMap = new();
     private bool _stateChanged;
-    private readonly Timer _chatActivityTimer = new();
-    private bool _hasChatActivity;
+    private DateTime _lastChatActivity = DateTime.MinValue;
     private Dictionary<string, bool> _addonHoverStates = new Dictionary<string, bool>();
     private readonly Dictionary<string, Element> _addonNameToElement = new();
 
@@ -105,7 +104,6 @@ public class Plugin : IDalamudPlugin
             }
         }
 
-        _chatActivityTimer.Elapsed += (_, _) => _hasChatActivity = false;
         ChatGui.ChatMessage += OnChatMessage;
         PluginInterface.LanguageChanged += LanguageChanged;
 
@@ -124,7 +122,6 @@ public class Plugin : IDalamudPlugin
         CommandManager.RemoveHandler(CommandName);
         ChatGui.ChatMessage -= OnChatMessage;
 
-        _chatActivityTimer.Dispose();
         _configWindow.Dispose();
         _windowSystem.RemoveWindow(_configWindow);
     }
@@ -179,11 +176,10 @@ public class Plugin : IDalamudPlugin
             && (!Config.EmoteActivity || !Constants.EmoteChatTypes.Contains(type)))
             return;
 
-        _hasChatActivity = true;
-        _chatActivityTimer.Stop();
-        _chatActivityTimer.Interval = Config.ChatActivityTimeout;
-        _chatActivityTimer.Start();
+        _lastChatActivity = DateTime.Now;
     }
+    private bool IsChatActive() =>
+    (DateTime.Now - _lastChatActivity).TotalMilliseconds < Config.ChatActivityTimeout;
 
     private unsafe void OnFrameworkUpdate(IFramework framework)
     {
@@ -209,7 +205,7 @@ public class Plugin : IDalamudPlugin
         UpdateState(State.CtrlKeyFocus, KeyState[(int)Constants.OverrideKeys.Ctrl]);
         UpdateState(State.ShiftKeyFocus, KeyState[(int)Constants.OverrideKeys.Shift]);
         UpdateState(State.ChatFocus, Addon.IsChatFocused());
-        UpdateState(State.ChatActivity, _hasChatActivity);
+        UpdateState(State.ChatActivity, IsChatActive());
         UpdateState(State.IsMoving, Addon.IsMoving());
         UpdateState(State.Combat, Condition[ConditionFlag.InCombat]);
         UpdateState(State.WeaponUnsheathed, Addon.IsWeaponUnsheathed());
