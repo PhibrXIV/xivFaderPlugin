@@ -20,7 +20,6 @@ using Lumina.Excel;
 using Lumina.Excel.Sheets;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using ImGuiNET;
-using FaderPlugin.Utils;
 using System.Numerics;
 
 namespace FaderPlugin;
@@ -63,7 +62,8 @@ public class Plugin : IDalamudPlugin
     private readonly ExcelSheet<TerritoryType> _territorySheet;
 
     // Delay management Utility
-    private readonly DelayManager _delayManager = new DelayManager();
+    private readonly Dictionary<string, DateTime> _delayTimers = new();
+    private readonly Dictionary<string, ConfigEntry> _lastNonDefaultEntry = new();
 
     // Enum Cache
     private static readonly Element[] AllElements = Enum.GetValues<Element>();
@@ -284,12 +284,15 @@ public class Plugin : IDalamudPlugin
             return;
         }
 
+        // If delay is disabled, clear any stored delay state.
         if (!Config.DefaultDelayEnabled)
-            _delayManager.ClearAll();
+        {
+            _delayTimers.Clear();
+            _lastNonDefaultEntry.Clear();
+        }
 
         foreach (var addonName in _addonNameToElement.Keys)
         {
-            // Retrieve the associated element for config purposes.
             var element = _addonNameToElement[addonName];
             var elementConfig = Config.GetElementConfig(element);
             bool isHovered = _addonHoverStates.TryGetValue(addonName, out bool hovered) && hovered;
@@ -339,33 +342,48 @@ public class Plugin : IDalamudPlugin
 
     private ConfigEntry GetCandidateConfig(string addonName, List<ConfigEntry> elementConfig, bool isHovered)
     {
-        // If hovered, try to get the Hover entry.
+        // Prefer Hover state when applicable.
         ConfigEntry? candidate = isHovered
             ? elementConfig.FirstOrDefault(e => e.state == State.Hover)
             : null;
 
-        // If no hover candidate, choose a non-hover active state or fallback to default.
+        // Fallback: choose an active non-hover state or default.
         if (candidate == null)
         {
             candidate = elementConfig.FirstOrDefault(e => _stateMap[e.state] && e.state != State.Hover)
                         ?? elementConfig.FirstOrDefault(e => e.state == State.Default);
         }
+
         var now = DateTime.Now;
-        // If non-default, record state for delay purposes.
         if (candidate != null && candidate.state != State.Default)
         {
-            _delayManager.RecordNonDefaultState(addonName, candidate, now);
+            // Record the non-default state with a timestamp.
+            _delayTimers[addonName] = now;
+            _lastNonDefaultEntry[addonName] = candidate;
 
-            // **Force non-default states to Show** if they are Hide in config ( should only be relevant for existing configs )
+            // Force non-default states to Show.
             if (candidate.setting == Setting.Hide)
             {
                 candidate.setting = Setting.Show;
             }
         }
-        // If default and delay is enabled, use the delayed state if within the delay period.
         else if (candidate != null && candidate.state == State.Default && Config.DefaultDelayEnabled)
         {
-            candidate = _delayManager.GetDelayedConfig(addonName, candidate, now, Config.DefaultDelay);
+            // Check if there's a recent non-default state that should be used.
+            if (_delayTimers.TryGetValue(addonName, out var start) &&
+                (now - start).TotalMilliseconds < Config.DefaultDelay)
+            {
+                if (_lastNonDefaultEntry.TryGetValue(addonName, out var nonDefault))
+                {
+                    candidate = nonDefault;
+                }
+            }
+            else
+            {
+                // Delay expired; clear stored values.
+                _delayTimers.Remove(addonName);
+                _lastNonDefaultEntry.Remove(addonName);
+            }
         }
 
         return candidate!;
