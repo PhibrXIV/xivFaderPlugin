@@ -37,7 +37,7 @@ public class Plugin : IDalamudPlugin
     [PluginService] public static IGameGui GameGui { get; set; } = null!;
     [PluginService] public static ITargetManager TargetManager { get; set; } = null!;
     [PluginService] public static IDataManager Data { get; private set; } = null!;
-
+    [PluginService] public static IPluginLog Log { get; private set; } = null!;
     // Configuration and windows.
     public readonly Configuration Config;
     private readonly WindowSystem _windowSystem = new("Fader");
@@ -49,9 +49,12 @@ public class Plugin : IDalamudPlugin
     private DateTime _lastChatActivity = DateTime.MinValue;
     private Dictionary<string, bool> _addonHoverStates = new Dictionary<string, bool>();
     private readonly Dictionary<string, Element> _addonNameToElement = new();
+    private DateTime _opacityUpdateEndTime = DateTime.MinValue;
+    private bool _opacityUpdateActive = false;
 
     // Opacity Management
     private readonly Dictionary<string, float> _currentAlphas = new();
+    private readonly Dictionary<string, float> _targetAlphas = new();
     private readonly Dictionary<string, bool> _finishingHover = new();
 
     // Commands
@@ -181,19 +184,40 @@ public class Plugin : IDalamudPlugin
     private bool IsChatActive() =>
     (DateTime.Now - _lastChatActivity).TotalMilliseconds < Config.ChatActivityTimeout;
 
-    private unsafe void OnFrameworkUpdate(IFramework framework)
+    private void OnFrameworkUpdate(IFramework framework)
     {
         if (!IsSafeToWork())
             return;
 
-        _stateChanged = false;
-        UpdateInputStates();
 
+        UpdateInputStates();
         UpdateMouseHoverState();
 
-        UpdateAddonOpacity();
+        // Only update opacities if state changed or alphas don't match.
+        if (_stateChanged || !DoAlphasMatch())
+        {
+            Log.Debug(DoAlphasMatch().ToString());
+            _stateChanged = false;
+            UpdateAddonOpacity();
+        }
     }
+    private bool DoAlphasMatch()
+    {
+        // Check if both dictionaries have the same number of entries.
+        if (_targetAlphas.Count != _currentAlphas.Count)
+            return false;
 
+        // Iterate over the target alphas and compare with current alphas.
+        foreach (var kvp in _targetAlphas)
+        {
+            if (!_currentAlphas.TryGetValue(kvp.Key, out float currentAlpha) ||
+                Math.Abs(currentAlpha - kvp.Value) > 0.001f) // Adjust threshold as needed.
+            {
+                return false;
+            }
+        }
+        return true;
+    }
 
     #region Input & State Management
 
@@ -228,6 +252,18 @@ public class Plugin : IDalamudPlugin
                           || Condition[ConditionFlag.BoundByDuty56]
                           || Condition[ConditionFlag.BoundByDuty95];
         UpdateState(State.Duty, !inIslandSanctuary && boundByDuty);
+
+        var occupied = Condition[ConditionFlag.Occupied]
+          || Condition[ConditionFlag.Occupied30]
+          || Condition[ConditionFlag.Occupied33]
+          || Condition[ConditionFlag.Occupied38]
+          || Condition[ConditionFlag.Occupied39]
+          || Condition[ConditionFlag.OccupiedInCutSceneEvent]
+          || Condition[ConditionFlag.OccupiedInEvent]
+          || Condition[ConditionFlag.OccupiedSummoningBell]
+          || Condition[ConditionFlag.OccupiedInQuestEvent];
+
+        UpdateState(State.Occupied, occupied);
     }
 
     /// <summary>
@@ -284,8 +320,8 @@ public class Plugin : IDalamudPlugin
             return;
         }
 
-        // If delay is disabled, clear any stored delay state.
-        if (!Config.DefaultDelayEnabled)
+            // If delay is disabled, clear any stored delay state.
+            if (!Config.DefaultDelayEnabled)
         {
             _delayTimers.Clear();
             _lastNonDefaultEntry.Clear();
@@ -303,6 +339,8 @@ public class Plugin : IDalamudPlugin
             float currentAlpha = _currentAlphas.TryGetValue(addonName, out var alpha) ? alpha : Config.DefaultAlpha;
             float targetAlpha = CalculateTargetAlpha(candidate, effectiveSetting, isHovered, currentAlpha);
 
+            _targetAlphas[addonName] = targetAlpha;
+
             bool isHoverState = (candidate.state == State.Hover);
 
             if (isHovered || (_finishingHover.TryGetValue(addonName, out bool finishing) && finishing))
@@ -314,6 +352,7 @@ public class Plugin : IDalamudPlugin
                 {
                     isHoverState = true;
                     targetAlpha = candidate.Opacity;
+                    _targetAlphas[addonName] = targetAlpha;
                 }
                 else if (!isHovered)
                 {
@@ -449,7 +488,6 @@ public class Plugin : IDalamudPlugin
 
 
     #endregion
-
 
     /// <summary>
     /// Checks if it is safe for the plugin to perform work.
