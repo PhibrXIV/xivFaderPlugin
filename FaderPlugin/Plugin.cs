@@ -37,7 +37,6 @@ public class Plugin : IDalamudPlugin
     [PluginService] public static IGameGui GameGui { get; set; } = null!;
     [PluginService] public static ITargetManager TargetManager { get; set; } = null!;
     [PluginService] public static IDataManager Data { get; private set; } = null!;
-    [PluginService] public static IPluginLog Log { get; private set; } = null!;
     // Configuration and windows.
     public readonly Configuration Config;
     private readonly WindowSystem _windowSystem = new("Fader");
@@ -48,6 +47,7 @@ public class Plugin : IDalamudPlugin
     private bool _stateChanged;
     private DateTime _lastChatActivity = DateTime.MinValue;
     private Dictionary<string, bool> _addonHoverStates = new Dictionary<string, bool>();
+    private HashSet<string> _previousHoveredAddons = new();
     private readonly Dictionary<string, Element> _addonNameToElement = new();
     private DateTime _opacityUpdateEndTime = DateTime.MinValue;
     private bool _opacityUpdateActive = false;
@@ -189,41 +189,20 @@ public class Plugin : IDalamudPlugin
         if (!IsSafeToWork())
             return;
 
-
+        _stateChanged = false;
         UpdateInputStates();
         UpdateMouseHoverState();
 
-        // Only update opacities if state changed or alphas don't match.
-        if (_stateChanged || !DoAlphasMatch())
+        if (_stateChanged || !DoAlphasMatch() || AnyDelayExpired())
         {
-            Log.Debug(DoAlphasMatch().ToString());
-            _stateChanged = false;
             UpdateAddonOpacity();
         }
-    }
-    private bool DoAlphasMatch()
-    {
-        // Check if both dictionaries have the same number of entries.
-        if (_targetAlphas.Count != _currentAlphas.Count)
-            return false;
-
-        // Iterate over the target alphas and compare with current alphas.
-        foreach (var kvp in _targetAlphas)
-        {
-            if (!_currentAlphas.TryGetValue(kvp.Key, out float currentAlpha) ||
-                Math.Abs(currentAlpha - kvp.Value) > 0.001f) // Adjust threshold as needed.
-            {
-                return false;
-            }
-        }
-        return true;
     }
 
     #region Input & State Management
 
     private void UpdateInputStates()
     {
-        // Update states based on key, chat, movement, combat, etc.
         UpdateState(State.UserFocus, KeyState[Config.OverrideKey] || (Config.FocusOnHotbarsUnlock && !Addon.AreHotbarsLocked()));
         UpdateState(State.AltKeyFocus, KeyState[(int)Constants.OverrideKeys.Alt]);
         UpdateState(State.CtrlKeyFocus, KeyState[(int)Constants.OverrideKeys.Ctrl]);
@@ -284,10 +263,24 @@ public class Plugin : IDalamudPlugin
 
     private void UpdateMouseHoverState()
     {
+        // Update the hover states for all addons.
         UpdateHoverStates();
-        bool hoverDetected = _addonHoverStates.Values.Any(hovered => hovered);
+
+        var currentHovered = new HashSet<string>(
+            _addonHoverStates.Where(kvp => kvp.Value).Select(kvp => kvp.Key)
+        );
+
+        if (!currentHovered.SetEquals(_previousHoveredAddons))
+        {
+            _stateChanged = true;
+        }
+
+        _previousHoveredAddons = currentHovered;
+
+        bool hoverDetected = currentHovered.Any();
         UpdateState(State.Hover, hoverDetected);
     }
+
 
 
     private void UpdateState(State state, bool value)
@@ -489,8 +482,34 @@ public class Plugin : IDalamudPlugin
 
     #endregion
 
+    #region Helper Methods
+    private bool DoAlphasMatch()
+    {
+        // Check if both dictionaries have the same number of entries.
+        if (_targetAlphas.Count != _currentAlphas.Count)
+            return false;
+
+        foreach (var kvp in _targetAlphas)
+        {
+            if (!_currentAlphas.TryGetValue(kvp.Key, out float currentAlpha) ||
+                Math.Abs(currentAlpha - kvp.Value) > 0.001f)
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private bool AnyDelayExpired()
+    {
+        var now = DateTime.Now;
+        return _delayTimers.Values.Any(timer => (now - timer).TotalMilliseconds >= Config.DefaultDelay);
+    }
+
     /// <summary>
     /// Checks if it is safe for the plugin to perform work.
     /// </summary>
     private bool IsSafeToWork() => !Condition[ConditionFlag.BetweenAreas] && ClientState.IsLoggedIn;
+
+    #endregion
 }
