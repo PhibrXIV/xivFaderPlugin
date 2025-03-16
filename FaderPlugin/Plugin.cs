@@ -47,8 +47,6 @@ public class Plugin : IDalamudPlugin
     // State maps and timers.
     private readonly Dictionary<State, bool> _stateMap = new();
     private bool _stateChanged;
-    private readonly Timer _idleTimer = new();
-    private bool _hasIdled;
     private readonly Timer _chatActivityTimer = new();
     private bool _hasChatActivity;
 
@@ -92,11 +90,6 @@ public class Plugin : IDalamudPlugin
         foreach (State state in AllStates)
             _stateMap[state] = state == State.Default;
 
-        // We don't want a looping timer, only once
-        _idleTimer.AutoReset = false;
-        _idleTimer.Elapsed += (_, _) => _hasIdled = true;
-        _idleTimer.Start();
-
         _chatActivityTimer.Elapsed += (_, _) => _hasChatActivity = false;
         ChatGui.ChatMessage += OnChatMessage;
         PluginInterface.LanguageChanged += LanguageChanged;
@@ -116,7 +109,6 @@ public class Plugin : IDalamudPlugin
         CommandManager.RemoveHandler(CommandName);
         ChatGui.ChatMessage -= OnChatMessage;
 
-        _idleTimer.Dispose();
         _chatActivityTimer.Dispose();
         _configWindow.Dispose();
         _windowSystem.RemoveWindow(_configWindow);
@@ -415,9 +407,7 @@ public class Plugin : IDalamudPlugin
     {
         if (!_enabled || Addon.IsHudManagerOpen())
             return Setting.Show;
-        if (candidate.state != State.Default || !Config.DefaultDelayEnabled || _hasIdled)
-            return candidate.setting;
-        return Setting.Hide;
+        return candidate.setting;
     }
 
     private float CalculateTargetAlpha(ConfigEntry candidate, Setting effectiveSetting, bool isHovered, float currentAlpha)
