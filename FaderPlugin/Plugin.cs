@@ -21,6 +21,7 @@ using Lumina.Excel.Sheets;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using ImGuiNET;
 using FaderPlugin.Utils;
+using System.Numerics;
 
 namespace FaderPlugin;
 
@@ -65,6 +66,10 @@ public class Plugin : IDalamudPlugin
     // Delay management Utility
     private readonly DelayManager _delayManager = new DelayManager();
 
+    // Enum Cache
+    private static readonly Element[] AllElements = (Element[])Enum.GetValues(typeof(Element));
+    private static readonly State[] AllStates = (State[])Enum.GetValues(typeof(State));
+
     public Plugin()
     {
         LoadConfig(out Config);
@@ -84,7 +89,7 @@ public class Plugin : IDalamudPlugin
             HelpMessage = "Opens settings\n't' toggles whether it's enabled.\n'on' enables the plugin\n'off' disables the plugin."
         });
 
-        foreach (State state in Enum.GetValues(typeof(State)))
+        foreach (State state in AllStates)
             _stateMap[state] = state == State.Default;
 
         // We don't want a looping timer, only once
@@ -236,22 +241,19 @@ public class Plugin : IDalamudPlugin
 
     private unsafe void UpdateMouseHoverState()
     {
+        // Cache mouse position
+        var mousePos = ImGui.GetMousePos();
         // Check all element addons for mouse hover.
         bool hoverDetected = false;
-        foreach (Element element in Enum.GetValues(typeof(Element)))
+        foreach (var element in AllElements)
         {
             var addonNames = ElementUtil.GetAddonName(element);
             foreach (var addonName in addonNames)
             {
-                var addonPointer = GameGui.GetAddonByName(addonName);
-                if (addonPointer != nint.Zero)
+                if (IsAddonHovered(addonName, mousePos))
                 {
-                    var addon = (AtkUnitBase*)addonPointer;
-                    if (Addon.IsMouseHovering(addon))
-                    {
-                        hoverDetected = true;
-                        break;
-                    }
+                    hoverDetected = true;
+                    break;
                 }
             }
             if (hoverDetected)
@@ -283,7 +285,7 @@ public class Plugin : IDalamudPlugin
         // When forceShow is active, only update hide/show but leave opacities untouched.
         if (forceShow)
         {
-            foreach (Element element in Enum.GetValues(typeof(Element)))
+            foreach (var element in AllElements)
             {
                 if (element.ShouldIgnoreElement())
                     continue;
@@ -304,7 +306,9 @@ public class Plugin : IDalamudPlugin
             _delayManager.ClearAll();
 
         var now = DateTime.Now;
-        foreach (Element element in Enum.GetValues(typeof(Element)))
+        // Cache mouse position once
+        var mousePos = ImGui.GetMousePos();
+        foreach (var element in AllElements)
         {
             if (element.ShouldIgnoreElement())
                 continue;
@@ -314,7 +318,7 @@ public class Plugin : IDalamudPlugin
 
             foreach (var addonName in addonNames)
             {
-                bool physicallyHovered = IsAddonHovered(addonName);
+                bool physicallyHovered = IsAddonHovered(addonName, mousePos);
                 ConfigEntry candidate = GetCandidateConfig(addonName, elementConfig, now, physicallyHovered);
                 Setting effectiveSetting = GetEffectiveSetting(candidate);
 
@@ -373,38 +377,38 @@ public class Plugin : IDalamudPlugin
 
 
     private ConfigEntry GetCandidateConfig(string addonName, List<ConfigEntry> elementConfig, DateTime now, bool isHovered)
-{
-    // If hovered, try to get the Hover entry.
-    ConfigEntry? candidate = isHovered
-        ? elementConfig.FirstOrDefault(e => e.state == State.Hover)
-        : null;
-
-    // If no hover candidate, choose a non-hover active state or fallback to default.
-    if (candidate == null)
     {
-        candidate = elementConfig.FirstOrDefault(e => _stateMap[e.state] && e.state != State.Hover)
-                    ?? elementConfig.FirstOrDefault(e => e.state == State.Default);
-    }
+        // If hovered, try to get the Hover entry.
+        ConfigEntry? candidate = isHovered
+            ? elementConfig.FirstOrDefault(e => e.state == State.Hover)
+            : null;
 
-    // If non-default, record state for delay purposes.
-    if (candidate != null && candidate.state != State.Default)
-    {
-        _delayManager.RecordNonDefaultState(addonName, candidate, now);
-
-        // **Force non-default states to Show** if they are Hide in config ( should only be relevant for existing configs )
-        if (candidate.setting == Setting.Hide)
+        // If no hover candidate, choose a non-hover active state or fallback to default.
+        if (candidate == null)
         {
-            candidate.setting = Setting.Show;
+            candidate = elementConfig.FirstOrDefault(e => _stateMap[e.state] && e.state != State.Hover)
+                        ?? elementConfig.FirstOrDefault(e => e.state == State.Default);
         }
-    }
-    // If default and delay is enabled, use the delayed state if within the delay period.
-    else if (candidate != null && candidate.state == State.Default && Config.DefaultDelayEnabled)
-    {
-        candidate = _delayManager.GetDelayedConfig(addonName, candidate, now, Config.DefaultDelay);
-    }
 
-    return candidate!;
-}
+        // If non-default, record state for delay purposes.
+        if (candidate != null && candidate.state != State.Default)
+        {
+            _delayManager.RecordNonDefaultState(addonName, candidate, now);
+
+            // **Force non-default states to Show** if they are Hide in config ( should only be relevant for existing configs )
+            if (candidate.setting == Setting.Hide)
+            {
+                candidate.setting = Setting.Show;
+            }
+        }
+        // If default and delay is enabled, use the delayed state if within the delay period.
+        else if (candidate != null && candidate.state == State.Default && Config.DefaultDelayEnabled)
+        {
+            candidate = _delayManager.GetDelayedConfig(addonName, candidate, now, Config.DefaultDelay);
+        }
+
+        return candidate!;
+    }
 
 
     private Setting GetEffectiveSetting(ConfigEntry candidate)
@@ -438,14 +442,13 @@ public class Plugin : IDalamudPlugin
     /// <summary>
     /// Checks if the addon identified by addonName is currently hovered.
     /// </summary>
-    private unsafe bool IsAddonHovered(string addonName)
+    private unsafe bool IsAddonHovered(string addonName, Vector2 mousePos)
     {
         var addonPointer = GameGui.GetAddonByName(addonName);
         if (addonPointer == nint.Zero)
             return false;
 
         var addon = (AtkUnitBase*)addonPointer;
-        var mousePos = ImGui.GetMousePos();
         float posX = addon->GetX();
         float posY = addon->GetY();
         float width = addon->GetScaledWidth(true);
@@ -460,7 +463,7 @@ public class Plugin : IDalamudPlugin
     /// </summary>
     private void ForceShowAllElements()
     {
-        foreach (Element element in Enum.GetValues(typeof(Element)))
+        foreach (var element in AllElements)
         {
             if (element.ShouldIgnoreElement())
                 continue;
