@@ -67,8 +67,8 @@ public class Plugin : IDalamudPlugin
     private readonly DelayManager _delayManager = new DelayManager();
 
     // Enum Cache
-    private static readonly Element[] AllElements = (Element[])Enum.GetValues(typeof(Element));
-    private static readonly State[] AllStates = (State[])Enum.GetValues(typeof(State));
+    private static readonly Element[] AllElements = Enum.GetValues<Element>();
+    private static readonly State[] AllStates = Enum.GetValues<State>();
 
     public Plugin()
     {
