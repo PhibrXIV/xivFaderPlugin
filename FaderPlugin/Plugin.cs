@@ -51,6 +51,8 @@ public class Plugin : IDalamudPlugin
     private readonly Dictionary<string, Element> _addonNameToElement = new();
     private DateTime _opacityUpdateEndTime = DateTime.MinValue;
     private bool _opacityUpdateActive = false;
+    private bool _configChanged;
+
 
     // Opacity Management
     private readonly Dictionary<string, float> _currentAlphas = new();
@@ -109,6 +111,7 @@ public class Plugin : IDalamudPlugin
 
         ChatGui.ChatMessage += OnChatMessage;
         PluginInterface.LanguageChanged += LanguageChanged;
+        Config.OnSave += OnConfigChanged;
 
         // Recover from previous misconfiguration
         if (Config.DefaultDelay == 0)
@@ -124,6 +127,7 @@ public class Plugin : IDalamudPlugin
         Framework.Update -= OnFrameworkUpdate;
         CommandManager.RemoveHandler(CommandName);
         ChatGui.ChatMessage -= OnChatMessage;
+        Config.OnSave -= OnConfigChanged;
 
         _configWindow.Dispose();
         _windowSystem.RemoveWindow(_configWindow);
@@ -171,6 +175,11 @@ public class Plugin : IDalamudPlugin
         }
     }
 
+    private void OnConfigChanged()
+    {
+        _configChanged = true;
+    }
+
     private void OnChatMessage(XivChatType type, int _, ref SeString sender, ref SeString message, ref bool isHandled)
     {
         // Don't trigger chat for non-standard chat channels.
@@ -193,9 +202,10 @@ public class Plugin : IDalamudPlugin
         UpdateInputStates();
         UpdateMouseHoverState();
 
-        if (_stateChanged || !DoAlphasMatch() || AnyDelayExpired())
+        if ( _stateChanged || _configChanged || !DoAlphasMatch() || AnyDelayExpired() )
         {
             UpdateAddonOpacity();
+            _configChanged = false;
         }
     }
 
