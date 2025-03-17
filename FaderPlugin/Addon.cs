@@ -1,13 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Numerics;
 using FFXIVClientStructs.FFXIV.Client.Game.Fate;
 using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using FFXIVClientStructs.FFXIV.Client.Graphics;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using FFXIVClientStructs.FFXIV.Component.GUI;
-using ImGuiNET;
+using System;
+using System.Collections.Generic;
+using System.Numerics;
 
 namespace FaderPlugin;
 
@@ -16,9 +15,9 @@ public static unsafe class Addon
 
     private static readonly AtkStage* Stage = AtkStage.Instance();
 
-    private static readonly Dictionary<string, (short X, short Y)> StoredPositions = new();
+    private static readonly Dictionary<string, (short X, short Y)> StoredPositions = [];
 
-    private static readonly Dictionary<string, bool> CachedAddonOpenState = new();
+    private static readonly Dictionary<string, bool> CachedAddonOpenState = [];
 
     #region Visibility and Position
 
@@ -70,7 +69,7 @@ public static unsafe class Addon
 
         // Preserve RGB, only adjust alpha.
         var currentColor = node->Color;
-        byte newAlpha = (byte)(alpha * 255);
+        var newAlpha = (byte)(alpha * 255);
 
         ByteColor newColor = default;
         newColor.R = currentColor.R;
@@ -153,23 +152,6 @@ public static unsafe class Addon
 
     #region Mouse / Movement Checks
 
-    /// <summary>
-    /// Returns true if the mouse position is currently over the bounding rectangle of the given addon.
-    /// </summary>
-    /// <param name="addon">A pointer to the <see cref="AtkUnitBase"/> representing the addon.</param>
-    public static bool IsMouseHovering(AtkUnitBase* addon)
-    {
-        float posX = addon->GetX();
-        float posY = addon->GetY();
-        float width = addon->GetScaledWidth(true);
-        float height = addon->GetScaledHeight(true);
-
-        var mousePos = ImGui.GetMousePos();
-        return (mousePos.X >= posX && mousePos.X <= posX + width &&
-                mousePos.Y >= posY && mousePos.Y <= posY + height);
-    }
-
-
     public static bool IsMoving()
         => AgentMap.Instance()->IsPlayerMoving != 0;
 
@@ -187,7 +169,7 @@ public static unsafe class Addon
         try
         {
             // Check whether Mouse Mode or Gamepad Mode is enabled.
-            bool mouseModeEnabled = hotbarAddon->ShowHideFlags == 0;
+            var mouseModeEnabled = hotbarAddon->ShowHideFlags == 0;
             return mouseModeEnabled ? hotbarAddon->IsLocked : crossbarAddon->IsLocked;
         }
         catch (AccessViolationException)

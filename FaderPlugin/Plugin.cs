@@ -1,8 +1,3 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
-using System.Timers;
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Game.ClientState.Objects;
 using Dalamud.Game.ClientState.Objects.Enums;
@@ -13,13 +8,17 @@ using Dalamud.Interface.Windowing;
 using Dalamud.IoC;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
-using FaderPlugin.Data;
 using faderPlugin.Resources;
+using FaderPlugin.Data;
 using FaderPlugin.Windows.Config;
-using Lumina.Excel;
-using Lumina.Excel.Sheets;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using ImGuiNET;
+using Lumina.Excel;
+using Lumina.Excel.Sheets;
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.Linq;
 using System.Numerics;
 
 namespace FaderPlugin;
@@ -39,36 +38,35 @@ public class Plugin : IDalamudPlugin
     [PluginService] public static IDataManager Data { get; private set; } = null!;
     // Configuration and windows.
     public readonly Configuration Config;
-    private readonly WindowSystem _windowSystem = new("Fader");
-    private readonly ConfigWindow _configWindow;
+    private readonly WindowSystem WindowSystem = new("Fader");
+    private readonly ConfigWindow ConfigWindow;
 
     // State maps and timers.
-    private readonly Dictionary<State, bool> _stateMap = new();
-    private bool _stateChanged;
-    private DateTime _lastChatActivity = DateTime.MinValue;
-    private Dictionary<string, bool> _addonHoverStates = new Dictionary<string, bool>();
-    private HashSet<string> _previousHoveredAddons = new();
-    private readonly Dictionary<string, Element> _addonNameToElement = new();
-    private DateTime _opacityUpdateEndTime = DateTime.MinValue;
-    private bool _opacityUpdateActive = false;
-    private bool _configChanged;
+    private readonly Dictionary<State, bool> StateMap = [];
+    private bool StateChanged;
+    private long LastChatActivity = Environment.TickCount64;
+    private readonly Dictionary<string, bool> AddonHoverStates = [];
+    private HashSet<string> PreviousHoveredAddons = [];
+    private readonly Dictionary<string, Element> AddonNameToElement = [];
+    private readonly long OpacityUpdateEndTime = Environment.TickCount64;
+    private bool ConfigChanged;
 
 
     // Opacity Management
-    private readonly Dictionary<string, float> _currentAlphas = new();
-    private readonly Dictionary<string, float> _targetAlphas = new();
-    private readonly Dictionary<string, bool> _finishingHover = new();
+    private readonly Dictionary<string, float> CurrentAlphas = [];
+    private readonly Dictionary<string, float> TargetAlphas = [];
+    private readonly Dictionary<string, bool> FinishingHover = [];
 
     // Commands
     private const string CommandName = "/pfader";
-    private bool _enabled = true;
+    private bool Enabled = true;
 
     // Territory Excel sheet.
-    private readonly ExcelSheet<TerritoryType> _territorySheet;
+    private readonly ExcelSheet<TerritoryType> TerritorySheet;
 
     // Delay management Utility
-    private readonly Dictionary<string, DateTime> _delayTimers = new();
-    private readonly Dictionary<string, ConfigEntry> _lastNonDefaultEntry = new();
+    private readonly Dictionary<string, long> DelayTimers = [];
+    private readonly Dictionary<string, ConfigEntry> LastNonDefaultEntry = [];
 
     // Enum Cache
     private static readonly Element[] AllElements = Enum.GetValues<Element>();
@@ -79,10 +77,10 @@ public class Plugin : IDalamudPlugin
         LoadConfig(out Config);
         LanguageChanged(PluginInterface.UiLanguage);
 
-        _configWindow = new ConfigWindow(this);
-        _windowSystem.AddWindow(_configWindow);
+        ConfigWindow = new ConfigWindow(this);
+        WindowSystem.AddWindow(ConfigWindow);
 
-        _territorySheet = Data.GetExcelSheet<TerritoryType>();
+        TerritorySheet = Data.GetExcelSheet<TerritoryType>();
 
         Framework.Update += OnFrameworkUpdate;
         PluginInterface.UiBuilder.Draw += DrawUi;
@@ -93,8 +91,8 @@ public class Plugin : IDalamudPlugin
             HelpMessage = "Opens settings\n't' toggles whether it's enabled.\n'on' enables the plugin\n'off' disables the plugin."
         });
 
-        foreach (State state in AllStates)
-            _stateMap[state] = state == State.Default;
+        foreach (var state in AllStates)
+            StateMap[state] = state == State.Default;
 
         foreach (var element in AllElements)
         {
@@ -104,8 +102,7 @@ public class Plugin : IDalamudPlugin
             var addonNames = ElementUtil.GetAddonName(element);
             foreach (var addonName in addonNames)
             {
-                if (!_addonNameToElement.ContainsKey(addonName))
-                    _addonNameToElement.Add(addonName, element);
+                AddonNameToElement.TryAdd(addonName, element);
             }
         }
 
@@ -129,8 +126,8 @@ public class Plugin : IDalamudPlugin
         ChatGui.ChatMessage -= OnChatMessage;
         Config.OnSave -= OnConfigChanged;
 
-        _configWindow.Dispose();
-        _windowSystem.RemoveWindow(_configWindow);
+        ConfigWindow.Dispose();
+        WindowSystem.RemoveWindow(ConfigWindow);
     }
 
 
@@ -148,9 +145,9 @@ public class Plugin : IDalamudPlugin
         configuration.Initialize();
     }
 
-    private void DrawUi() => _windowSystem.Draw();
+    private void DrawUi() => WindowSystem.Draw();
 
-    private void DrawConfigUi() => _configWindow.Toggle();
+    private void DrawConfigUi() => ConfigWindow.Toggle();
 
 
     private void FaderCommandHandler(string s, string arguments)
@@ -158,26 +155,26 @@ public class Plugin : IDalamudPlugin
         switch (arguments.Trim())
         {
             case "t" or "toggle":
-                _enabled = !_enabled;
-                ChatGui.Print(_enabled ? Language.ChatPluginEnabled : Language.ChatPluginDisabled);
+                Enabled = !Enabled;
+                ChatGui.Print(Enabled ? Language.ChatPluginEnabled : Language.ChatPluginDisabled);
                 break;
             case "on":
-                _enabled = true;
+                Enabled = true;
                 ChatGui.Print(Language.ChatPluginEnabled);
                 break;
             case "off":
-                _enabled = false;
+                Enabled = false;
                 ChatGui.Print(Language.ChatPluginDisabled);
                 break;
             case "":
-                _configWindow.Toggle();
+                ConfigWindow.Toggle();
                 break;
         }
     }
 
     private void OnConfigChanged()
     {
-        _configChanged = true;
+        ConfigChanged = true;
     }
 
     private void OnChatMessage(XivChatType type, int _, ref SeString sender, ref SeString message, ref bool isHandled)
@@ -188,24 +185,24 @@ public class Plugin : IDalamudPlugin
             && (!Config.EmoteActivity || !Constants.EmoteChatTypes.Contains(type)))
             return;
 
-        _lastChatActivity = DateTime.Now;
+        LastChatActivity = Environment.TickCount64;
     }
-    private bool IsChatActive() =>
-    (DateTime.Now - _lastChatActivity).TotalMilliseconds < Config.ChatActivityTimeout;
+
+    private bool IsChatActive() => (Environment.TickCount64 - LastChatActivity) < Config.ChatActivityTimeout;
 
     private void OnFrameworkUpdate(IFramework framework)
     {
         if (!IsSafeToWork())
             return;
 
-        _stateChanged = false;
+        StateChanged = false;
         UpdateInputStates();
         UpdateMouseHoverState();
 
-        if ( _stateChanged || _configChanged || !DoAlphasMatch() || AnyDelayExpired() )
+        if (StateChanged || ConfigChanged || !DoAlphasMatch() || AnyDelayExpired())
         {
             UpdateAddonOpacity();
-            _configChanged = false;
+            ConfigChanged = false;
         }
     }
 
@@ -233,8 +230,7 @@ public class Plugin : IDalamudPlugin
         UpdateState(State.Gathering, Condition[ConditionFlag.Gathering]);
         UpdateState(State.Mounted, Condition[ConditionFlag.Mounted] || Condition[ConditionFlag.Mounted2]);
 
-        bool inIslandSanctuary = _territorySheet.HasRow(ClientState.TerritoryType)
-            && _territorySheet.GetRow(ClientState.TerritoryType).TerritoryIntendedUse.RowId == 49;
+        var inIslandSanctuary = (TerritorySheet.TryGetRow(ClientState.TerritoryType, out var territory) && territory.TerritoryIntendedUse.RowId == 49);
         UpdateState(State.IslandSanctuary, inIslandSanctuary);
 
         var boundByDuty = Condition[ConditionFlag.BoundByDuty]
@@ -261,12 +257,12 @@ public class Plugin : IDalamudPlugin
     private void UpdateHoverStates()
     {
         var mousePos = ImGui.GetMousePos();
-        _addonHoverStates.Clear();
+        AddonHoverStates.Clear();
 
-        foreach (var addonName in _addonNameToElement.Keys)
+        foreach (var addonName in AddonNameToElement.Keys)
         {
             // Compute the hover state once per addon.
-            _addonHoverStates[addonName] = IsAddonHovered(addonName, mousePos);
+            AddonHoverStates[addonName] = IsAddonHovered(addonName, mousePos);
         }
     }
 
@@ -277,17 +273,15 @@ public class Plugin : IDalamudPlugin
         UpdateHoverStates();
 
         var currentHovered = new HashSet<string>(
-            _addonHoverStates.Where(kvp => kvp.Value).Select(kvp => kvp.Key)
+            AddonHoverStates.Where(kvp => kvp.Value).Select(kvp => kvp.Key)
         );
 
-        if (!currentHovered.SetEquals(_previousHoveredAddons))
-        {
-            _stateChanged = true;
-        }
+        if (!currentHovered.SequenceEqual(PreviousHoveredAddons))
+            StateChanged = true;
 
-        _previousHoveredAddons = currentHovered;
+        PreviousHoveredAddons = currentHovered;
 
-        bool hoverDetected = currentHovered.Any();
+        var hoverDetected = currentHovered.Count != 0;
         UpdateState(State.Hover, hoverDetected);
     }
 
@@ -295,10 +289,10 @@ public class Plugin : IDalamudPlugin
 
     private void UpdateState(State state, bool value)
     {
-        if (_stateMap[state] != value)
+        if (StateMap[state] != value)
         {
-            _stateMap[state] = value;
-            _stateChanged = true;
+            StateMap[state] = value;
+            StateChanged = true;
         }
     }
 
@@ -311,72 +305,71 @@ public class Plugin : IDalamudPlugin
         if (!IsSafeToWork())
             return;
 
-        bool forceShow = !_enabled || Addon.IsHudManagerOpen();
+        var forceShow = !Enabled || Addon.IsHudManagerOpen();
 
         if (forceShow)
         {
-            foreach (var addonName in _addonNameToElement.Keys)
+            foreach (var addonName in AddonNameToElement.Keys)
             {
                 Addon.SetAddonVisibility(addonName, true);
-                _finishingHover[addonName] = false;
+                FinishingHover[addonName] = false;
             }
             return;
         }
 
-            // If delay is disabled, clear any stored delay state.
-            if (!Config.DefaultDelayEnabled)
+        // If delay is disabled, clear any stored delay state.
+        if (!Config.DefaultDelayEnabled)
         {
-            _delayTimers.Clear();
-            _lastNonDefaultEntry.Clear();
+            DelayTimers.Clear();
+            LastNonDefaultEntry.Clear();
         }
 
-        foreach (var addonName in _addonNameToElement.Keys)
+        foreach (var addonName in AddonNameToElement.Keys)
         {
-            var element = _addonNameToElement[addonName];
+            var element = AddonNameToElement[addonName];
             var elementConfig = Config.GetElementConfig(element);
-            bool isHovered = _addonHoverStates.TryGetValue(addonName, out bool hovered) && hovered;
+            var isHovered = AddonHoverStates.TryGetValue(addonName, out var hovered) && hovered;
 
-            ConfigEntry candidate = GetCandidateConfig(addonName, elementConfig, isHovered);
-            Setting effectiveSetting = GetEffectiveSetting(candidate);
+            var candidate = GetCandidateConfig(addonName, elementConfig, isHovered);
+            var effectiveSetting = GetEffectiveSetting(candidate);
 
-            float currentAlpha = _currentAlphas.TryGetValue(addonName, out var alpha) ? alpha : Config.DefaultAlpha;
-            float targetAlpha = CalculateTargetAlpha(candidate, effectiveSetting, isHovered, currentAlpha);
+            var currentAlpha = CurrentAlphas.TryGetValue(addonName, out var alpha) ? alpha : Config.DefaultAlpha;
+            var targetAlpha = CalculateTargetAlpha(candidate, effectiveSetting, isHovered, currentAlpha);
 
-            _targetAlphas[addonName] = targetAlpha;
+            TargetAlphas[addonName] = targetAlpha;
 
-            bool isHoverState = (candidate.state == State.Hover);
+            var isHoverState = (candidate.state == State.Hover);
 
-            if (isHovered || (_finishingHover.TryGetValue(addonName, out bool finishing) && finishing))
+            if (isHovered || (FinishingHover.TryGetValue(addonName, out var finishing) && finishing))
             {
                 if (isHoverState)
-                    _finishingHover[addonName] = true;
+                    FinishingHover[addonName] = true;
 
                 if (currentAlpha < candidate.Opacity - 0.001f)
                 {
-                    isHoverState = true;
                     targetAlpha = candidate.Opacity;
-                    _targetAlphas[addonName] = targetAlpha;
+                    TargetAlphas[addonName] = targetAlpha;
                 }
                 else if (!isHovered)
                 {
-                    _finishingHover[addonName] = false;
+                    FinishingHover[addonName] = false;
                 }
             }
             else
             {
-                _finishingHover[addonName] = false;
+                FinishingHover[addonName] = false;
             }
 
-            float transitionSpeed = (targetAlpha > currentAlpha)
+            var transitionSpeed = (targetAlpha > currentAlpha)
                 ? Config.EnterTransitionSpeed
                 : Config.ExitTransitionSpeed;
 
             currentAlpha = MoveTowards(currentAlpha, targetAlpha, transitionSpeed * (float)Framework.UpdateDelta.TotalSeconds);
-            _currentAlphas[addonName] = currentAlpha;
+            CurrentAlphas[addonName] = currentAlpha;
             Addon.SetAddonOpacity(addonName, currentAlpha);
 
-            bool defaultDisabled = (candidate.state == State.Default && candidate.setting == Setting.Hide);
-            bool hidden = defaultDisabled && currentAlpha < 0.05f;
+            var defaultDisabled = (candidate.state == State.Default && candidate.setting == Setting.Hide);
+            var hidden = defaultDisabled && currentAlpha < 0.05f;
             Addon.SetAddonVisibility(addonName, !hidden);
         }
     }
@@ -385,23 +378,20 @@ public class Plugin : IDalamudPlugin
     private ConfigEntry GetCandidateConfig(string addonName, List<ConfigEntry> elementConfig, bool isHovered)
     {
         // Prefer Hover state when applicable.
-        ConfigEntry? candidate = isHovered
+        var candidate = isHovered
             ? elementConfig.FirstOrDefault(e => e.state == State.Hover)
             : null;
 
         // Fallback: choose an active non-hover state or default.
-        if (candidate == null)
-        {
-            candidate = elementConfig.FirstOrDefault(e => _stateMap[e.state] && e.state != State.Hover)
+        candidate ??= elementConfig.FirstOrDefault(e => StateMap[e.state] && e.state != State.Hover)
                         ?? elementConfig.FirstOrDefault(e => e.state == State.Default);
-        }
 
-        var now = DateTime.Now;
+        var now = Environment.TickCount64;
         if (candidate != null && candidate.state != State.Default)
         {
             // Record the non-default state with a timestamp.
-            _delayTimers[addonName] = now;
-            _lastNonDefaultEntry[addonName] = candidate;
+            DelayTimers[addonName] = now;
+            LastNonDefaultEntry[addonName] = candidate;
 
             // Force non-default states to Show.
             if (candidate.setting == Setting.Hide)
@@ -412,10 +402,10 @@ public class Plugin : IDalamudPlugin
         else if (candidate != null && candidate.state == State.Default && Config.DefaultDelayEnabled)
         {
             // Check if there's a recent non-default state that should be used.
-            if (_delayTimers.TryGetValue(addonName, out var start) &&
-                (now - start).TotalMilliseconds < Config.DefaultDelay)
+            if (DelayTimers.TryGetValue(addonName, out var start) &&
+                (now - start) < Config.DefaultDelay)
             {
-                if (_lastNonDefaultEntry.TryGetValue(addonName, out var nonDefault))
+                if (LastNonDefaultEntry.TryGetValue(addonName, out var nonDefault))
                 {
                     candidate = nonDefault;
                 }
@@ -423,8 +413,8 @@ public class Plugin : IDalamudPlugin
             else
             {
                 // Delay expired; clear stored values.
-                _delayTimers.Remove(addonName);
-                _lastNonDefaultEntry.Remove(addonName);
+                DelayTimers.Remove(addonName);
+                LastNonDefaultEntry.Remove(addonName);
             }
         }
 
@@ -434,12 +424,12 @@ public class Plugin : IDalamudPlugin
 
     private Setting GetEffectiveSetting(ConfigEntry candidate)
     {
-        if (!_enabled || Addon.IsHudManagerOpen())
+        if (!Enabled || Addon.IsHudManagerOpen())
             return Setting.Show;
         return candidate.setting;
     }
 
-    private float CalculateTargetAlpha(ConfigEntry candidate, Setting effectiveSetting, bool isHovered, float currentAlpha)
+    private static float CalculateTargetAlpha(ConfigEntry candidate, Setting effectiveSetting, bool isHovered, float currentAlpha)
     {
         if (candidate.state == State.Hover)
         {
@@ -449,10 +439,11 @@ public class Plugin : IDalamudPlugin
     }
 
     /// <summary>
-    /// Smoothly moves current value toward target value. TODO: add easing functions perhaps?
+    /// Smoothly moves current value toward target value.
     /// </summary>
-    private float MoveTowards(float current, float target, float maxDelta)
+    private static float MoveTowards(float current, float target, float maxDelta)
     {
+        // TODO: add easing functions perhaps?
         if (Math.Abs(target - current) <= maxDelta)
             return target;
         return current + Math.Sign(target - current) * maxDelta;
@@ -470,8 +461,8 @@ public class Plugin : IDalamudPlugin
         var addon = (AtkUnitBase*)addonPointer;
         float posX = addon->GetX();
         float posY = addon->GetY();
-        float width = addon->GetScaledWidth(true);
-        float height = addon->GetScaledHeight(true);
+        var width = addon->GetScaledWidth(true);
+        var height = addon->GetScaledHeight(true);
 
         return mousePos.X >= posX && mousePos.X <= posX + width &&
                mousePos.Y >= posY && mousePos.Y <= posY + height;
@@ -482,7 +473,7 @@ public class Plugin : IDalamudPlugin
     /// </summary>
     private void ForceShowAllElements()
     {
-        foreach (var addonName in _addonNameToElement.Keys)
+        foreach (var addonName in AddonNameToElement.Keys)
         {
             Addon.SetAddonOpacity(addonName, 1.0f);
             Addon.SetAddonVisibility(addonName, true);
@@ -496,12 +487,12 @@ public class Plugin : IDalamudPlugin
     private bool DoAlphasMatch()
     {
         // Check if both dictionaries have the same number of entries.
-        if (_targetAlphas.Count != _currentAlphas.Count)
+        if (TargetAlphas.Count != CurrentAlphas.Count)
             return false;
 
-        foreach (var kvp in _targetAlphas)
+        foreach (var kvp in TargetAlphas)
         {
-            if (!_currentAlphas.TryGetValue(kvp.Key, out float currentAlpha) ||
+            if (!CurrentAlphas.TryGetValue(kvp.Key, out var currentAlpha) ||
                 Math.Abs(currentAlpha - kvp.Value) > 0.001f)
             {
                 return false;
@@ -512,8 +503,8 @@ public class Plugin : IDalamudPlugin
 
     private bool AnyDelayExpired()
     {
-        var now = DateTime.Now;
-        return _delayTimers.Values.Any(timer => (now - timer).TotalMilliseconds >= Config.DefaultDelay);
+        var now = Environment.TickCount64;
+        return DelayTimers.Values.Any(timer => (now - timer) >= Config.DefaultDelay);
     }
 
     /// <summary>

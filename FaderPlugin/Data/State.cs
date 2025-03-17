@@ -1,6 +1,6 @@
-﻿using System;
+﻿using faderPlugin.Resources;
+using System;
 using System.Collections.Generic;
-using faderPlugin.Resources;
 
 namespace FaderPlugin.Data;
 

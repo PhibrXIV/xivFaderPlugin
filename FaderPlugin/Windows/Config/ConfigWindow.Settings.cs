@@ -1,16 +1,16 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Numerics;
 using Dalamud.Interface;
 using Dalamud.Interface.Colors;
 using Dalamud.Interface.Components;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Utility.Raii;
 using Dalamud.Utility;
-using FaderPlugin.Data;
 using faderPlugin.Resources;
+using FaderPlugin.Data;
 using ImGuiNET;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Numerics;
 
 namespace FaderPlugin.Windows.Config;
 
@@ -33,7 +33,8 @@ public partial class ConfigWindow
         {
             // Create a 2-column table to align labels and controls.
             // Increase widths so longer text doesn't get cut off.
-            if (ImGui.BeginTable("FaderSettingsTable", 2, ImGuiTableFlags.SizingFixedFit | ImGuiTableFlags.NoSavedSettings))
+            using var table = ImRaii.Table("FaderSettingsTable", 2, ImGuiTableFlags.SizingFixedFit | ImGuiTableFlags.NoSavedSettings);
+            if (table.Success)
             {
                 // Adjust column widths to give more space to labels.
                 ImGui.TableSetupColumn("Label", ImGuiTableColumnFlags.WidthFixed, 300.0f * ImGuiHelpers.GlobalScale);
@@ -133,7 +134,7 @@ public partial class ConfigWindow
                 ImGui.SetNextItemWidth(-1);
                 if (defaultDelayEnabled)
                 {
-                    float idleDelay = (float)TimeSpan.FromMilliseconds(Configuration.DefaultDelay).TotalSeconds;
+                    var idleDelay = (float)TimeSpan.FromMilliseconds(Configuration.DefaultDelay).TotalSeconds;
                     if (ImGui.SliderFloat("##default_delay", ref idleDelay, 0.1f, 15f, $"%.1f {Language.Seconds}"))
                     {
                         Configuration.DefaultDelay = (int)TimeSpan.FromSeconds(Math.Round(idleDelay, 1)).TotalMilliseconds;
@@ -167,7 +168,7 @@ public partial class ConfigWindow
 
                 ImGui.TableNextColumn();
                 ImGui.SetNextItemWidth(-1);
-                float enterTransitionTimeMs = Configuration.EnterTransitionSpeed > 0.0001f
+                var enterTransitionTimeMs = Configuration.EnterTransitionSpeed > 0.0001f
                     ? (1.0f / Configuration.EnterTransitionSpeed) * 1000.0f
                     : 1000.0f;
                 if (ImGui.SliderFloat("##enter_transition_time_ms", ref enterTransitionTimeMs, 10.0f, 2000.0f, "%.0f ms"))
@@ -187,7 +188,7 @@ public partial class ConfigWindow
 
                 ImGui.TableNextColumn();
                 ImGui.SetNextItemWidth(-1);
-                float exitTransitionTimeMs = Configuration.ExitTransitionSpeed > 0.0001f
+                var exitTransitionTimeMs = Configuration.ExitTransitionSpeed > 0.0001f
                     ? (1.0f / Configuration.ExitTransitionSpeed) * 1000.0f
                     : 1000.0f;
                 if (ImGui.SliderFloat("##exit_transition_time_ms", ref exitTransitionTimeMs, 10.0f, 2000.0f, "%.0f ms"))
@@ -196,8 +197,6 @@ public partial class ConfigWindow
                     Configuration.ExitTransitionSpeed = 1000.0f / exitTransitionTimeMs;
                     Configuration.Save();
                 }
-
-                ImGui.EndTable();
             }
         }
 
@@ -279,171 +278,173 @@ public partial class ConfigWindow
 
         #region Right Child : Element Configuration
         ImGui.SetCursorPos(startPos with { X = startPos.X + childSize });
-        using (var contentChild = ImRaii.Child("ConfigPage", Vector2.Zero, true))
+        using var contentChild = ImRaii.Child("ConfigPage", Vector2.Zero, true);
+
+        if (!contentChild.Success)
+            return;
+
+        // If no elements are selected, do nothing.
+        if (SelectedElements.Count == 0)
+            return;
+
+        var selectedElement = SelectedElements[0];
+        var elementName = ElementUtil.GetElementName(selectedElement);
+        if (SelectedElements.Count > 1)
+            elementName += $" & {Language.SettingsOthers}";
+
+        ImGui.TextUnformatted(Language.SettingsElementConfiguration.Format(elementName));
+        if (SelectedElements.Count > 1)
         {
-            if (!contentChild.Success)
-                return;
+            if (ImGui.Button(Language.SettingsSyncToElement.Format(selectedElement)))
+                SaveSelectedElementsConfig();
+        }
 
-            // If no elements are selected, do nothing.
-            if (SelectedElements.Count == 0)
-                return;
+        // Draw each condition row
+        for (var i = 0; i < SelectedConfig.Count; i++)
+        {
+            var elementState = SelectedConfig[i].state;
+            var elementSetting = SelectedConfig[i].setting;
 
-            var selectedElement = SelectedElements[0];
-            var elementName = ElementUtil.GetElementName(selectedElement);
-            if (SelectedElements.Count > 1)
-                elementName += $" & {Language.SettingsOthers}";
+            // State
+            var itemWidth = 200.0f * ImGuiHelpers.GlobalScale;
+            ImGui.SetNextItemWidth(itemWidth);
 
-            ImGui.TextUnformatted(Language.SettingsElementConfiguration.Format(elementName));
-            if (SelectedElements.Count > 1)
+            var stateName = StateUtil.GetStateName(elementState);
+            if (elementState == State.Default)
             {
-                if (ImGui.Button(Language.SettingsSyncToElement.Format(selectedElement)))
-                    SaveSelectedElementsConfig();
+                ImGui.NewLine();
+                var pos = ImGui.GetCursorPos();
+                ImGui.TextUnformatted(stateName);
+                ImGui.SetCursorPos(pos with { X = pos.X + itemWidth + ImGui.GetStyle().ItemSpacing.X });
             }
-
-            // Draw each condition row
-            for (var i = 0; i < SelectedConfig.Count; i++)
+            else
             {
-                var elementState = SelectedConfig[i].state;
-                var elementSetting = SelectedConfig[i].setting;
-
-                // State
-                var itemWidth = 200.0f * ImGuiHelpers.GlobalScale;
-                ImGui.SetNextItemWidth(itemWidth);
-
-                var stateName = StateUtil.GetStateName(elementState);
-                if (elementState == State.Default)
+                using (var combo = ImRaii.Combo($"##{elementName}-{i}-state", stateName))
                 {
-                    ImGui.NewLine();
-                    var pos = ImGui.GetCursorPos();
-                    ImGui.TextUnformatted(stateName);
-                    ImGui.SetCursorPos(pos with { X = pos.X + itemWidth + ImGui.GetStyle().ItemSpacing.X });
-                }
-                else
-                {
-                    using (var combo = ImRaii.Combo($"##{elementName}-{i}-state", stateName))
+                    if (combo.Success)
                     {
-                        if (combo.Success)
+                        foreach (var state in StateUtil.OrderedStates)
                         {
-                            foreach (var state in StateUtil.OrderedStates)
-                            {
-                                if (state is State.None or State.Default)
-                                    continue;
+                            if (state is State.None or State.Default)
+                                continue;
 
-                                if (ImGui.Selectable(StateUtil.GetStateName(state)))
-                                {
-                                    SelectedConfig[i].state = state;
-                                    SaveSelectedElementsConfig();
-                                }
+                            if (ImGui.Selectable(StateUtil.GetStateName(state)))
+                            {
+                                SelectedConfig[i].state = state;
+                                SaveSelectedElementsConfig();
                             }
                         }
                     }
-                    ImGui.SameLine();
                 }
-
-                // Opacity
-                {
-                    float opacity = SelectedConfig[i].Opacity;
-                    ImGui.SameLine();
-                    ImGui.SetNextItemWidth(itemWidth);
-                    if (ImGui.SliderFloat($"##{elementName}-{i}-opacity", ref opacity, 0.0f, 1.0f, $"{Language.Opacity}: %.2f"))
-                    {
-                        SelectedConfig[i].Opacity = opacity;
-                        // If the opacity is increased above 0.05 while the element is disabled, force Show
-                        if (opacity > 0.05f && SelectedConfig[i].setting == Setting.Hide)
-                        {
-                            SelectedConfig[i].setting = Setting.Show;
-                        }
-                        SaveSelectedElementsConfig();
-                    }
-                }
-
-                // Disable checkbox only if default state & low opacity
                 ImGui.SameLine();
-                if (SelectedConfig[i].state == State.Default && SelectedConfig[i].Opacity <= 0.05f)
-                {
-                    bool hide = (SelectedConfig[i].setting == Setting.Hide);
-                    if (ImGui.Checkbox($"##{elementName}-{i}-hide", ref hide))
-                    {
-                        SelectedConfig[i].setting = hide ? Setting.Hide : Setting.Show;
-                        SaveSelectedElementsConfig();
-                    }
-                    ImGui.SameLine();
-                    ImGui.TextUnformatted(Language.SettingsDisable);
-                    ImGuiComponents.HelpMarker(Language.SettingsDisableTooltip);
-                }
-
-                // If not default, show reordering & delete buttons
-                if (elementState != State.Default)
-                {
-                    ImGui.SameLine();
-                    using var innerFont = ImRaii.PushFont(UiBuilder.IconFont);
-                    if (ImGui.Button($"{FontAwesomeIcon.ArrowUp.ToIconString()}##{elementName}-{i}-up"))
-                    {
-                        if (i > 0)
-                        {
-                            var swap1 = SelectedConfig[i - 1];
-                            var swap2 = SelectedConfig[i];
-                            if (swap1.state != State.Default && swap2.state != State.Default)
-                            {
-                                SelectedConfig[i] = swap1;
-                                SelectedConfig[i - 1] = swap2;
-                                SaveSelectedElementsConfig();
-                            }
-                        }
-                    }
-
-                    ImGui.SameLine();
-                    if (ImGui.Button($"{FontAwesomeIcon.ArrowDown.ToIconString()}##{elementName}-{i}-down"))
-                    {
-                        if (i < SelectedConfig.Count - 1)
-                        {
-                            var swap1 = SelectedConfig[i + 1];
-                            var swap2 = SelectedConfig[i];
-                            if (swap1.state != State.Default && swap2.state != State.Default)
-                            {
-                                SelectedConfig[i] = swap1;
-                                SelectedConfig[i + 1] = swap2;
-                                SaveSelectedElementsConfig();
-                            }
-                        }
-                    }
-
-                    ImGui.SameLine();
-                    if (ImGui.Button($"{FontAwesomeIcon.TrashAlt.ToIconString()}##{elementName}-{i}-delete"))
-                    {
-                        SelectedConfig.RemoveAt(i);
-                        SaveSelectedElementsConfig();
-                    }
-                }
             }
 
-            // Add new condition row
-            ImGui.SameLine();
-            using (var font = ImRaii.PushFont(UiBuilder.IconFont)){;
-                if (ImGui.Button($"{FontAwesomeIcon.Plus.ToIconString()}##{elementName}-add"))
+            // Opacity
+            {
+                var opacity = SelectedConfig[i].Opacity;
+                ImGui.SameLine();
+                ImGui.SetNextItemWidth(itemWidth);
+                if (ImGui.SliderFloat($"##{elementName}-{i}-opacity", ref opacity, 0.0f, 1.0f, $"{Language.Opacity}: %.2f"))
                 {
-                    SelectedConfig.Add(new ConfigEntry(State.None, Setting.Hide));
-                    var swap1 = SelectedConfig[^1];
-                    var swap2 = SelectedConfig[^2];
-                    SelectedConfig[^2] = swap1;
-                    SelectedConfig[^1] = swap2;
+                    SelectedConfig[i].Opacity = opacity;
+                    // If the opacity is increased above 0.05 while the element is disabled, force Show
+                    if (opacity > 0.05f && SelectedConfig[i].setting == Setting.Hide)
+                    {
+                        SelectedConfig[i].setting = Setting.Show;
+                    }
                     SaveSelectedElementsConfig();
                 }
             }
-            // Warning Label
-            {
-                var defaultEntry = SelectedConfig.FirstOrDefault(e => e.state == State.Default);
-                bool defaultDisabled = defaultEntry != null && defaultEntry.setting == Setting.Hide;
-                bool hoverPresent = SelectedConfig.Any(e => e.state == State.Hover);
 
-                if (defaultDisabled && hoverPresent)
+            // Disable checkbox only if default state & low opacity
+            ImGui.SameLine();
+            if (SelectedConfig[i].state == State.Default && SelectedConfig[i].Opacity <= 0.05f)
+            {
+                var hide = (SelectedConfig[i].setting == Setting.Hide);
+                if (ImGui.Checkbox($"##{elementName}-{i}-hide", ref hide))
                 {
-                    ImGui.Separator();
-                    ImGui.TextColored(ImGuiColors.DalamudRed, Language.StateWarning);
+                    SelectedConfig[i].setting = hide ? Setting.Hide : Setting.Show;
+                    SaveSelectedElementsConfig();
+                }
+                ImGui.SameLine();
+                ImGui.TextUnformatted(Language.SettingsDisable);
+                ImGuiComponents.HelpMarker(Language.SettingsDisableTooltip);
+            }
+
+            // If not default, show reordering & delete buttons
+            if (elementState != State.Default)
+            {
+                ImGui.SameLine();
+                using var innerFont = ImRaii.PushFont(UiBuilder.IconFont);
+                if (ImGui.Button($"{FontAwesomeIcon.ArrowUp.ToIconString()}##{elementName}-{i}-up"))
+                {
+                    if (i > 0)
+                    {
+                        var swap1 = SelectedConfig[i - 1];
+                        var swap2 = SelectedConfig[i];
+                        if (swap1.state != State.Default && swap2.state != State.Default)
+                        {
+                            SelectedConfig[i] = swap1;
+                            SelectedConfig[i - 1] = swap2;
+                            SaveSelectedElementsConfig();
+                        }
+                    }
+                }
+
+                ImGui.SameLine();
+                if (ImGui.Button($"{FontAwesomeIcon.ArrowDown.ToIconString()}##{elementName}-{i}-down"))
+                {
+                    if (i < SelectedConfig.Count - 1)
+                    {
+                        var swap1 = SelectedConfig[i + 1];
+                        var swap2 = SelectedConfig[i];
+                        if (swap1.state != State.Default && swap2.state != State.Default)
+                        {
+                            SelectedConfig[i] = swap1;
+                            SelectedConfig[i + 1] = swap2;
+                            SaveSelectedElementsConfig();
+                        }
+                    }
+                }
+
+                ImGui.SameLine();
+                if (ImGui.Button($"{FontAwesomeIcon.TrashAlt.ToIconString()}##{elementName}-{i}-delete"))
+                {
+                    SelectedConfig.RemoveAt(i);
+                    SaveSelectedElementsConfig();
                 }
             }
         }
+
+        // Add new condition row
+        ImGui.SameLine();
+        using (var font = ImRaii.PushFont(UiBuilder.IconFont))
+        {
+            ;
+            if (ImGui.Button($"{FontAwesomeIcon.Plus.ToIconString()}##{elementName}-add"))
+            {
+                SelectedConfig.Add(new ConfigEntry(State.None, Setting.Hide));
+                var swap1 = SelectedConfig[^1];
+                var swap2 = SelectedConfig[^2];
+                SelectedConfig[^2] = swap1;
+                SelectedConfig[^1] = swap2;
+                SaveSelectedElementsConfig();
+            }
+        }
+        // Warning Label
+        {
+            var defaultEntry = SelectedConfig.FirstOrDefault(e => e.state == State.Default);
+            var defaultDisabled = defaultEntry != null && defaultEntry.setting == Setting.Hide;
+            var hoverPresent = SelectedConfig.Any(e => e.state == State.Hover);
+
+            if (defaultDisabled && hoverPresent)
+            {
+                ImGui.Separator();
+                Helper.TextColored(ImGuiColors.DalamudRed, Language.StateWarning);
+            }
+        }
     }
+
     #endregion
 
     private void SaveSelectedElementsConfig()

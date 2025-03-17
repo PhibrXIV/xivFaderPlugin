@@ -1,5 +1,5 @@
-﻿using System.Collections.Generic;
-using Dalamud.Game.Text;
+﻿using Dalamud.Game.Text;
+using System.Collections.Generic;
 
 namespace FaderPlugin;
 

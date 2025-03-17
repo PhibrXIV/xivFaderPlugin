@@ -1,8 +1,8 @@
-using System;
-using System.Numerics;
 using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Windowing;
 using FaderPlugin.Data;
+using System;
+using System.Numerics;
 
 namespace FaderPlugin.Windows.Config;
 

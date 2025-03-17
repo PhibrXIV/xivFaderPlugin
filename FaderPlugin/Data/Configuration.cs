@@ -1,6 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
 using Dalamud.Configuration;
+using System;
+using System.Collections.Generic;
 
 namespace FaderPlugin.Data;
 
@@ -43,7 +43,7 @@ public class Configuration : IPluginConfiguration
         foreach (var element in Enum.GetValues<Element>())
         {
             if (!elementsConfig.ContainsKey(element))
-                elementsConfig[element] = new List<ConfigEntry> { new ConfigEntry(State.Default, Setting.Show) };
+                elementsConfig[element] = [new ConfigEntry(State.Default, Setting.Show)];
         }
         FixLegacyConfig();
         Save();
@@ -58,9 +58,8 @@ public class Configuration : IPluginConfiguration
                 // If the entry is set to Hide and its opacity is above 0.05 (which old configurations will be),
                 // then update it to 0 to keep the configuration working as before.
                 if (entry.setting == Setting.Hide && entry.Opacity > 0.05f)
-                {
                     entry.Opacity = 0;
-                }
+
             }
         }
     }
@@ -68,7 +67,7 @@ public class Configuration : IPluginConfiguration
     public List<ConfigEntry> GetElementConfig(Element elementId)
     {
         if (!elementsConfig.ContainsKey(elementId))
-            elementsConfig[elementId] = new List<ConfigEntry>();
+            elementsConfig[elementId] = [];
 
         return elementsConfig[elementId];
     }
