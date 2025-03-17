@@ -45,7 +45,24 @@ public class Configuration : IPluginConfiguration
             if (!elementsConfig.ContainsKey(element))
                 elementsConfig[element] = new List<ConfigEntry> { new ConfigEntry(State.Default, Setting.Show) };
         }
+        FixLegacyConfig();
         Save();
+    }
+
+    public void FixLegacyConfig()
+    {
+        foreach (var entries in elementsConfig.Values)
+        {
+            foreach (var entry in entries)
+            {
+                // If the entry is set to Hide and its opacity is above 0.05 (which old configurations will be),
+                // then update it to 0 to keep the configuration working as before.
+                if (entry.setting == Setting.Hide && entry.Opacity > 0.05f)
+                {
+                    entry.Opacity = 0;
+                }
+            }
+        }
     }
 
     public List<ConfigEntry> GetElementConfig(Element elementId)
