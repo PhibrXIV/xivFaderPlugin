@@ -1,15 +1,16 @@
-using System;
-using System.Collections.Generic;
-using System.Numerics;
 using Dalamud.Interface;
 using Dalamud.Interface.Colors;
 using Dalamud.Interface.Components;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Utility.Raii;
 using Dalamud.Utility;
-using FaderPlugin.Data;
 using faderPlugin.Resources;
+using FaderPlugin.Data;
 using ImGuiNET;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Numerics;
 
 namespace FaderPlugin.Windows.Config;
 
@@ -18,7 +19,7 @@ public partial class ConfigWindow
     private List<ConfigEntry> SelectedConfig = [];
     private readonly List<Element> SelectedElements = [];
 
-    private Constants.OverrideKeys CurrentOverrideKey => (Constants.OverrideKeys) Configuration.OverrideKey;
+    private Constants.OverrideKeys CurrentOverrideKey => (Constants.OverrideKeys)Configuration.OverrideKey;
 
     private void Settings()
     {
@@ -26,88 +27,180 @@ public partial class ConfigWindow
         if (!tabItem.Success)
             return;
 
+        #region General Settings
+
         if (ImGui.CollapsingHeader(Language.SettingsGeneralHeader, ImGuiTreeNodeFlags.DefaultOpen))
         {
-            ImGui.TextUnformatted(Language.SettingsFocusKey);
-
-            ImGui.SameLine();
-            ImGui.SetNextItemWidth(195.0f * ImGuiHelpers.GlobalScale);
-            using (var combo = ImRaii.Combo("##UserFocusCombo", CurrentOverrideKey.ToString()))
+            // Create a 2-column table to align labels and controls.
+            // Increase widths so longer text doesn't get cut off.
+            using var table = ImRaii.Table("FaderSettingsTable", 2, ImGuiTableFlags.SizingFixedFit | ImGuiTableFlags.NoSavedSettings);
+            if (table.Success)
             {
-                if (combo.Success)
+                // Adjust column widths to give more space to labels.
+                ImGui.TableSetupColumn("Label", ImGuiTableColumnFlags.WidthFixed, 300.0f * ImGuiHelpers.GlobalScale);
+                ImGui.TableSetupColumn("Control", ImGuiTableColumnFlags.WidthFixed, 220.0f * ImGuiHelpers.GlobalScale);
+
+                //
+                // Focus Key
+                //
+                ImGui.TableNextRow();
+                ImGui.TableNextColumn();
+                ImGui.TextUnformatted(Language.SettingsFocusKey);
+                ImGuiComponents.HelpMarker(Language.SettingsFocusKeyTooltip);
+
+                ImGui.TableNextColumn();
+                ImGui.SetNextItemWidth(-1);
+                using (var combo = ImRaii.Combo("##UserFocusCombo", CurrentOverrideKey.ToString()))
                 {
-                    foreach (var option in Enum.GetValues<Constants.OverrideKeys>())
+                    if (combo.Success)
                     {
-                        if (ImGui.Selectable(option.ToString(), option.Equals(CurrentOverrideKey)))
+                        foreach (var option in Enum.GetValues<Constants.OverrideKeys>())
                         {
-                            Configuration.OverrideKey = (int)option;
-                            Configuration.Save();
+                            if (ImGui.Selectable(option.ToString(), option.Equals(CurrentOverrideKey)))
+                            {
+                                Configuration.OverrideKey = (int)option;
+                                Configuration.Save();
+                            }
                         }
                     }
                 }
-            }
 
-            ImGuiComponents.HelpMarker(Language.SettingsFocusKeyTooltip);
+                //
+                // Always User Focus when hotbars are unlocked
+                //
+                ImGui.TableNextRow();
+                ImGui.TableNextColumn();
+                ImGui.TextUnformatted(Language.SettingsFocusHotbarUnlock);
+                ImGuiComponents.HelpMarker(Language.SettingsFocusHotbarUnlockTooltip);
 
-            var focusOnHotbarsUnlock = Configuration.FocusOnHotbarsUnlock;
-            if (ImGui.Checkbox("##focus_on_unlocked_bars", ref focusOnHotbarsUnlock))
-            {
-                Configuration.FocusOnHotbarsUnlock = focusOnHotbarsUnlock;
-                Configuration.Save();
-            }
-
-            ImGui.SameLine();
-            ImGui.TextUnformatted(Language.SettingsFocusHotbarUnlock);
-            ImGuiComponents.HelpMarker(Language.SettingsFocusHotbarUnlockTooltip);
-
-            var emoteChat = Configuration.EmoteActivity;
-            if (ImGui.Checkbox(Language.SettingsEmoteActivity, ref emoteChat))
-            {
-                Configuration.EmoteActivity = emoteChat;
-                Configuration.Save();
-            }
-
-            var importChat = Configuration.ImportantActivity;
-            if (ImGui.Checkbox(Language.SettingsSystemTrigger, ref importChat))
-            {
-                Configuration.ImportantActivity = importChat;
-                Configuration.Save();
-            }
-
-            var idleDelay = (float)TimeSpan.FromMilliseconds(Configuration.DefaultDelay).TotalSeconds;
-            ImGui.TextUnformatted(Language.SettingsDelay);
-            ImGui.SameLine();
-            var defaultDelayEnabled = Configuration.DefaultDelayEnabled;
-            if (ImGui.Checkbox("##default_delay_enabled", ref defaultDelayEnabled))
-            {
-                Configuration.DefaultDelayEnabled = defaultDelayEnabled;
-                Configuration.Save();
-            }
-
-            if (defaultDelayEnabled)
-            {
-                ImGui.SameLine();
-                ImGui.SetNextItemWidth(170.0f * ImGuiHelpers.GlobalScale);
-                if (ImGui.SliderFloat("##default_delay", ref idleDelay, 0.1f, 15f, $"%.1f {Language.Seconds}"))
+                ImGui.TableNextColumn();
+                ImGui.SetNextItemWidth(-1);
+                var focusOnHotbarsUnlock = Configuration.FocusOnHotbarsUnlock;
+                if (ImGui.Checkbox("##focus_on_unlocked_bars", ref focusOnHotbarsUnlock))
                 {
-                    Configuration.DefaultDelay = (int)TimeSpan.FromSeconds(Math.Round(idleDelay, 1)).TotalMilliseconds;
+                    Configuration.FocusOnHotbarsUnlock = focusOnHotbarsUnlock;
+                    Configuration.Save();
+                }
+
+                //
+                // Emotes trigger chat activity
+                //
+                ImGui.TableNextRow();
+                ImGui.TableNextColumn();
+                ImGui.TextUnformatted(Language.SettingsEmoteActivity);
+
+                ImGui.TableNextColumn();
+                ImGui.SetNextItemWidth(-1);
+                var emoteChat = Configuration.EmoteActivity;
+                if (ImGui.Checkbox("##emote_activity", ref emoteChat))
+                {
+                    Configuration.EmoteActivity = emoteChat;
+                    Configuration.Save();
+                }
+
+                //
+                // System messages trigger chat activity
+                //
+                ImGui.TableNextRow();
+                ImGui.TableNextColumn();
+                ImGui.TextUnformatted(Language.SettingsSystemTrigger);
+
+                ImGui.TableNextColumn();
+                ImGui.SetNextItemWidth(-1);
+                var importChat = Configuration.ImportantActivity;
+                if (ImGui.Checkbox("##important_activity", ref importChat))
+                {
+                    Configuration.ImportantActivity = importChat;
+                    Configuration.Save();
+                }
+
+                //
+                // Default Delay
+                //
+                ImGui.TableNextRow();
+                ImGui.TableNextColumn();
+                ImGui.TextUnformatted(Language.SettingsDelay);
+                ImGuiComponents.HelpMarker(Language.SettingsDelayTooltip);
+
+                ImGui.TableNextColumn();
+                ImGui.SetNextItemWidth(-1);
+                var defaultDelayEnabled = Configuration.DefaultDelayEnabled;
+                if (ImGui.Checkbox("##default_delay_enabled", ref defaultDelayEnabled))
+                {
+                    Configuration.DefaultDelayEnabled = defaultDelayEnabled;
+                    Configuration.Save();
+                }
+                ImGui.SameLine();
+                ImGui.SetNextItemWidth(-1);
+                if (defaultDelayEnabled)
+                {
+                    var idleDelay = (float)TimeSpan.FromMilliseconds(Configuration.DefaultDelay).TotalSeconds;
+                    if (ImGui.SliderFloat("##default_delay", ref idleDelay, 0.1f, 15f, $"%.1f {Language.Seconds}"))
+                    {
+                        Configuration.DefaultDelay = (int)TimeSpan.FromSeconds(Math.Round(idleDelay, 1)).TotalMilliseconds;
+                        Configuration.Save();
+                    }
+                }
+
+                //
+                // Chat Activity Timeout
+                //
+                ImGui.TableNextRow();
+                ImGui.TableNextColumn();
+                ImGui.TextUnformatted(Language.SettingsChatActivityTimeout);
+
+                ImGui.TableNextColumn();
+                ImGui.SetNextItemWidth(-1);
+                var chatActivityTimeout = (int)TimeSpan.FromMilliseconds(Configuration.ChatActivityTimeout).TotalSeconds;
+                if (ImGui.SliderInt("##chat_activity_timeout", ref chatActivityTimeout, 1, 20, $"%d {Language.Seconds}"))
+                {
+                    Configuration.ChatActivityTimeout = (int)TimeSpan.FromSeconds(chatActivityTimeout).TotalMilliseconds;
+                    Configuration.Save();
+                }
+
+                //
+                // Enter Transition Time
+                //
+                ImGui.TableNextRow();
+                ImGui.TableNextColumn();
+                ImGui.TextUnformatted(Language.SettingsEnterTransition);
+                ImGuiComponents.HelpMarker(Language.SettingsEnterTransitionTooltip);
+
+                ImGui.TableNextColumn();
+                ImGui.SetNextItemWidth(-1);
+                var enterTransitionTimeMs = Configuration.EnterTransitionSpeed > 0.0001f
+                    ? (1.0f / Configuration.EnterTransitionSpeed) * 1000.0f
+                    : 1000.0f;
+                if (ImGui.SliderFloat("##enter_transition_time_ms", ref enterTransitionTimeMs, 10.0f, 2000.0f, "%.0f ms"))
+                {
+                    enterTransitionTimeMs = (float)Math.Round(enterTransitionTimeMs / 10.0f) * 10.0f;
+                    Configuration.EnterTransitionSpeed = 1000.0f / enterTransitionTimeMs;
+                    Configuration.Save();
+                }
+
+                //
+                // Exit Transition Time
+                //
+                ImGui.TableNextRow();
+                ImGui.TableNextColumn();
+                ImGui.TextUnformatted(Language.SettingsExitTransition);
+                ImGuiComponents.HelpMarker(Language.SettingsExitTransitionTooltip);
+
+                ImGui.TableNextColumn();
+                ImGui.SetNextItemWidth(-1);
+                var exitTransitionTimeMs = Configuration.ExitTransitionSpeed > 0.0001f
+                    ? (1.0f / Configuration.ExitTransitionSpeed) * 1000.0f
+                    : 1000.0f;
+                if (ImGui.SliderFloat("##exit_transition_time_ms", ref exitTransitionTimeMs, 10.0f, 2000.0f, "%.0f ms"))
+                {
+                    exitTransitionTimeMs = (float)Math.Round(exitTransitionTimeMs / 10.0f) * 10.0f;
+                    Configuration.ExitTransitionSpeed = 1000.0f / exitTransitionTimeMs;
                     Configuration.Save();
                 }
             }
-
-            ImGuiComponents.HelpMarker(Language.SettingsDelayTooltip);
-
-            ImGui.TextUnformatted(Language.SettingsChatActivityTimeout);
-            ImGui.SameLine();
-            ImGui.SetNextItemWidth(170 * ImGuiHelpers.GlobalScale);
-            var chatActivityTimeout = (int)TimeSpan.FromMilliseconds(Configuration.ChatActivityTimeout).TotalSeconds;
-            if (ImGui.SliderInt("##chat_activity_timeout", ref chatActivityTimeout, 1, 20, $"%d {Language.Seconds}"))
-            {
-                Configuration.ChatActivityTimeout = (int)TimeSpan.FromSeconds(chatActivityTimeout).TotalMilliseconds;
-                Configuration.Save();
-            }
         }
 
+        // Separator before the element configuration list
         ImGuiHelpers.ScaledDummy(5);
         ImGui.Separator();
         ImGuiHelpers.ScaledDummy(5);
@@ -115,12 +208,16 @@ public partial class ConfigWindow
         Helper.WrappedText(Language.SettingsMultiSelectionHint);
         ImGuiHelpers.ScaledDummy(5);
 
-        var startPos = ImGui.GetCursorPos();
+        #endregion
 
+        // Layout for element selection + config
+        var startPos = ImGui.GetCursorPos();
         var style = ImGui.GetStyle();
         var buttonWidth = ImGui.CalcTextSize("Context Action Hotbar   ?").X + style.FramePadding.X * 2 + style.ScrollbarSize;
         var childSize = buttonWidth + style.WindowPadding.X * 2;
-        using (var child = ImRaii.Child("ElementList", new Vector2(childSize , 0), true))
+
+        #region Left Child : Element Selection
+        using (var child = ImRaii.Child("ElementList", new Vector2(childSize, 0), true))
         {
             if (child.Success)
             {
@@ -131,7 +228,7 @@ public partial class ConfigWindow
 
                     var buttonText = ElementUtil.GetElementName(element);
                     var tooltipText = element.TooltipForElement();
-                    if (tooltipText != string.Empty)
+                    if (!string.IsNullOrEmpty(tooltipText))
                         buttonText += "   ?";
 
                     using var pushedStyle = ImRaii.PushStyle(ImGuiStyleVar.ButtonTextAlign, new Vector2(0, 0.5f));
@@ -156,11 +253,11 @@ public partial class ConfigWindow
 
                     if (ImGui.IsItemHovered())
                     {
-                        if (tooltipText != string.Empty)
+                        if (!string.IsNullOrEmpty(tooltipText))
                             Helper.Tooltip(tooltipText);
 
                         var addonNames = ElementUtil.GetAddonName(element);
-                        if(addonNames.Length == 0)
+                        if (addonNames.Length == 0)
                             continue;
 
                         var color = ImGui.GetColorU32(ImGuiColors.HealerGreen);
@@ -177,160 +274,188 @@ public partial class ConfigWindow
                 }
             }
         }
+        #endregion
 
-        ImGui.SetCursorPos(startPos with {X = startPos.X + childSize});
-        using (var contentChild = ImRaii.Child("ConfigPage", Vector2.Zero, true))
+        #region Right Child : Element Configuration
+        ImGui.SetCursorPos(startPos with { X = startPos.X + childSize });
+        using var contentChild = ImRaii.Child("ConfigPage", Vector2.Zero, true);
+
+        if (!contentChild.Success)
+            return;
+
+        // If no elements are selected, do nothing.
+        if (SelectedElements.Count == 0)
+            return;
+
+        var selectedElement = SelectedElements[0];
+        var elementName = ElementUtil.GetElementName(selectedElement);
+        if (SelectedElements.Count > 1)
+            elementName += $" & {Language.SettingsOthers}";
+
+        ImGui.TextUnformatted(Language.SettingsElementConfiguration.Format(elementName));
+        if (SelectedElements.Count > 1)
         {
-            if (contentChild.Success)
+            if (ImGui.Button(Language.SettingsSyncToElement.Format(selectedElement)))
+                SaveSelectedElementsConfig();
+        }
+
+        // Draw each condition row
+        for (var i = 0; i < SelectedConfig.Count; i++)
+        {
+            var elementState = SelectedConfig[i].state;
+            var elementSetting = SelectedConfig[i].setting;
+
+            // State
+            var itemWidth = 200.0f * ImGuiHelpers.GlobalScale;
+            ImGui.SetNextItemWidth(itemWidth);
+
+            var stateName = StateUtil.GetStateName(elementState);
+            if (elementState == State.Default)
             {
-                // Config for the selected elements.
-                if (SelectedElements.Count == 0)
-                    return;
-
-                var selectedElement = SelectedElements[0];
-                var elementName = ElementUtil.GetElementName(selectedElement);
-                if(SelectedElements.Count > 1)
-                    elementName += $" & {Language.SettingsOthers}";
-
-                ImGui.TextUnformatted(Language.SettingsElementConfiguration.Format(elementName));
-                if(SelectedElements.Count > 1)
-                    if(ImGui.Button(Language.SettingsSyncToElement.Format(selectedElement)))
-                        SaveSelectedElementsConfig();
-
-                // Config for each condition.
-                for(var i = 0; i < SelectedConfig.Count; i++)
+                ImGui.NewLine();
+                var pos = ImGui.GetCursorPos();
+                ImGui.TextUnformatted(stateName);
+                ImGui.SetCursorPos(pos with { X = pos.X + itemWidth + ImGui.GetStyle().ItemSpacing.X });
+            }
+            else
+            {
+                using (var combo = ImRaii.Combo($"##{elementName}-{i}-state", stateName))
                 {
-                    var elementState = SelectedConfig[i].state;
-                    var elementSetting = SelectedConfig[i].setting;
-
-                    // State
-                    var itemWidth = 200.0f * ImGuiHelpers.GlobalScale;
-                    ImGui.SetNextItemWidth(itemWidth);
-
-                    var stateName = StateUtil.GetStateName(elementState);
-                    if(elementState == State.Default)
+                    if (combo.Success)
                     {
-                        var pos = ImGui.GetCursorPos();
-                        ImGui.TextUnformatted(stateName);
-                        ImGui.SetCursorPos(pos with {X = pos.X + itemWidth + ImGui.GetStyle().ItemSpacing.X});
-                    }
-                    else
-                    {
-                        using (var combo = ImRaii.Combo($"##{elementName}-{i}-state", stateName))
+                        foreach (var state in StateUtil.OrderedStates)
                         {
-                            if (combo.Success)
+                            if (state is State.None or State.Default)
+                                continue;
+
+                            if (ImGui.Selectable(StateUtil.GetStateName(state)))
                             {
-                                foreach(var state in StateUtil.OrderedStates)
-                                {
-                                    if(state is State.None or State.Default)
-                                        continue;
-
-                                    if(ImGui.Selectable(StateUtil.GetStateName(state)))
-                                    {
-                                        SelectedConfig[i].state = state;
-                                        SaveSelectedElementsConfig();
-                                    }
-                                }
-                            }
-                        }
-
-                        ImGui.SameLine();
-                    }
-
-                    // Setting
-                    ImGui.SetNextItemWidth(itemWidth);
-                    using (var combo = ImRaii.Combo($"##{elementName}-{i}-setting", elementSetting.GetName()))
-                    {
-                        if (combo.Success)
-                        {
-                            foreach(var setting in Enum.GetValues<Setting>())
-                            {
-                                if(setting == Setting.Unknown)
-                                    continue;
-
-                                if(ImGui.Selectable(setting.GetName()))
-                                {
-                                    SelectedConfig[i].setting = setting;
-                                    SaveSelectedElementsConfig();
-                                }
-                            }
-                        }
-                    }
-
-                    if(elementState == State.Default)
-                        continue;
-
-                    // Up
-                    ImGui.SameLine();
-                    using var innerFont = ImRaii.PushFont(UiBuilder.IconFont);
-                    if(ImGui.Button($"{FontAwesomeIcon.ArrowUp.ToIconString()}##{elementName}-{i}-up"))
-                    {
-                        if(i > 0)
-                        {
-                            var swap1 = SelectedConfig[i - 1];
-                            var swap2 = SelectedConfig[i];
-
-                            if(swap1.state != State.Default && swap2.state != State.Default)
-                            {
-                                SelectedConfig[i] = swap1;
-                                SelectedConfig[i - 1] = swap2;
-
+                                SelectedConfig[i].state = state;
                                 SaveSelectedElementsConfig();
                             }
                         }
                     }
+                }
+                ImGui.SameLine();
+            }
 
-                    // Down
-                    ImGui.SameLine();
-                    if(ImGui.Button($"{FontAwesomeIcon.ArrowDown.ToIconString()}##{elementName}-{i}-down"))
+            // Opacity
+            {
+                var opacity = SelectedConfig[i].Opacity;
+                ImGui.SameLine();
+                ImGui.SetNextItemWidth(itemWidth);
+                if (ImGui.SliderFloat($"##{elementName}-{i}-opacity", ref opacity, 0.0f, 1.0f, $"{Language.Opacity}: %.2f"))
+                {
+                    SelectedConfig[i].Opacity = opacity;
+                    // If the opacity is increased above 0.05 while the element is disabled, force Show
+                    if (opacity > 0.05f && SelectedConfig[i].setting == Setting.Hide)
                     {
-                        if(i < SelectedConfig.Count - 1)
-                        {
-                            var swap1 = SelectedConfig[i + 1];
-                            var swap2 = SelectedConfig[i];
-
-                            if(swap1.state != State.Default && swap2.state != State.Default)
-                            {
-                                SelectedConfig[i] = swap1;
-                                SelectedConfig[i + 1] = swap2;
-
-                                SaveSelectedElementsConfig();
-                            }
-                        }
+                        SelectedConfig[i].setting = Setting.Show;
                     }
+                    SaveSelectedElementsConfig();
+                }
+            }
 
-                    // Delete
-                    ImGui.SameLine();
-                    if(ImGui.Button($"{FontAwesomeIcon.TrashAlt.ToIconString()}##{elementName}-{i}-delete"))
+            // Disable checkbox only if default state & low opacity
+            ImGui.SameLine();
+            if (SelectedConfig[i].state == State.Default && SelectedConfig[i].Opacity <= 0.05f)
+            {
+                var hide = (SelectedConfig[i].setting == Setting.Hide);
+                if (ImGui.Checkbox($"##{elementName}-{i}-hide", ref hide))
+                {
+                    SelectedConfig[i].setting = hide ? Setting.Hide : Setting.Show;
+                    SaveSelectedElementsConfig();
+                }
+                ImGui.SameLine();
+                ImGui.TextUnformatted(Language.SettingsDisable);
+                ImGuiComponents.HelpMarker(Language.SettingsDisableTooltip);
+            }
+
+            // If not default, show reordering & delete buttons
+            if (elementState != State.Default)
+            {
+                ImGui.SameLine();
+                using var innerFont = ImRaii.PushFont(UiBuilder.IconFont);
+                if (ImGui.Button($"{FontAwesomeIcon.ArrowUp.ToIconString()}##{elementName}-{i}-up"))
+                {
+                    if (i > 0)
                     {
-                        SelectedConfig.RemoveAt(i);
-
-                        SaveSelectedElementsConfig();
+                        var swap1 = SelectedConfig[i - 1];
+                        var swap2 = SelectedConfig[i];
+                        if (swap1.state != State.Default && swap2.state != State.Default)
+                        {
+                            SelectedConfig[i] = swap1;
+                            SelectedConfig[i - 1] = swap2;
+                            SaveSelectedElementsConfig();
+                        }
                     }
                 }
 
-                using var font = ImRaii.PushFont(UiBuilder.IconFont);
-                if(ImGui.Button($"{FontAwesomeIcon.Plus.ToIconString()}##{elementName}-add"))
+                ImGui.SameLine();
+                if (ImGui.Button($"{FontAwesomeIcon.ArrowDown.ToIconString()}##{elementName}-{i}-down"))
                 {
-                    // Add the new state then swap it with the existing default state.
-                    SelectedConfig.Add(new ConfigEntry(State.None, Setting.Hide));
-                    var swap1 = SelectedConfig[^1];
-                    var swap2 = SelectedConfig[^2];
+                    if (i < SelectedConfig.Count - 1)
+                    {
+                        var swap1 = SelectedConfig[i + 1];
+                        var swap2 = SelectedConfig[i];
+                        if (swap1.state != State.Default && swap2.state != State.Default)
+                        {
+                            SelectedConfig[i] = swap1;
+                            SelectedConfig[i + 1] = swap2;
+                            SaveSelectedElementsConfig();
+                        }
+                    }
+                }
 
-                    SelectedConfig[^2] = swap1;
-                    SelectedConfig[^1] = swap2;
-
+                ImGui.SameLine();
+                if (ImGui.Button($"{FontAwesomeIcon.TrashAlt.ToIconString()}##{elementName}-{i}-delete"))
+                {
+                    SelectedConfig.RemoveAt(i);
                     SaveSelectedElementsConfig();
                 }
             }
         }
+
+        // Add new condition row
+        ImGui.SameLine();
+        using (var font = ImRaii.PushFont(UiBuilder.IconFont))
+        {
+            ;
+            if (ImGui.Button($"{FontAwesomeIcon.Plus.ToIconString()}##{elementName}-add"))
+            {
+                SelectedConfig.Add(new ConfigEntry(State.None, Setting.Hide));
+                var swap1 = SelectedConfig[^1];
+                var swap2 = SelectedConfig[^2];
+                SelectedConfig[^2] = swap1;
+                SelectedConfig[^1] = swap2;
+                SaveSelectedElementsConfig();
+            }
+        }
+        // Warning Label
+        {
+            var defaultEntry = SelectedConfig.FirstOrDefault(e => e.state == State.Default);
+            var defaultDisabled = defaultEntry != null && defaultEntry.setting == Setting.Hide;
+            var hoverPresent = SelectedConfig.Any(e => e.state == State.Hover);
+
+            if (defaultDisabled && hoverPresent)
+            {
+                ImGui.Separator();
+                Helper.TextColored(ImGuiColors.DalamudRed, Language.StateWarning);
+            }
+        }
     }
+
+    #endregion
 
     private void SaveSelectedElementsConfig()
     {
-        foreach(var element in SelectedElements)
-            Configuration.elementsConfig[element] = SelectedConfig;
-
+        foreach (var element in SelectedElements)
+        {
+            Configuration.elementsConfig[element] = SelectedConfig
+                .Select(entry => new ConfigEntry(entry.state, entry.setting) { Opacity = entry.Opacity })
+                .ToList();
+        }
         Configuration.Save();
     }
+
 }

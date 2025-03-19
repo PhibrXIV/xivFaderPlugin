@@ -1,301 +1,430 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-
 <root>
-    <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
-        <xsd:element name="root" msdata:IsDataSet="true">
+  <!-- 
+    Microsoft ResX Schema 
+    
+    Version 2.0
+    
+    The primary goals of this format is to allow a simple XML format 
+    that is mostly human readable. The generation and parsing of the 
+    various data types are done through the TypeConverter classes 
+    associated with the data types.
+    
+    Example:
+    
+    ... ado.net/XML headers & schema ...
+    <resheader name="resmimetype">text/microsoft-resx</resheader>
+    <resheader name="version">2.0</resheader>
+    <resheader name="reader">System.Resources.ResXResourceReader, System.Windows.Forms, ...</resheader>
+    <resheader name="writer">System.Resources.ResXResourceWriter, System.Windows.Forms, ...</resheader>
+    <data name="Name1"><value>this is my long string</value><comment>this is a comment</comment></data>
+    <data name="Color1" type="System.Drawing.Color, System.Drawing">Blue</data>
+    <data name="Bitmap1" mimetype="application/x-microsoft.net.object.binary.base64">
+        <value>[base64 mime encoded serialized .NET Framework object]</value>
+    </data>
+    <data name="Icon1" type="System.Drawing.Icon, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+        <value>[base64 mime encoded string representing a byte array form of the .NET Framework object]</value>
+        <comment>This is a comment</comment>
+    </data>
+                
+    There are any number of "resheader" rows that contain simple 
+    name/value pairs.
+    
+    Each data row contains a name, and value. The row also contains a 
+    type or mimetype. Type corresponds to a .NET class that support 
+    text/value conversion through the TypeConverter architecture. 
+    Classes that don't support this are serialized and stored with the 
+    mimetype set.
+    
+    The mimetype is used for serialized objects, and tells the 
+    ResXResourceReader how to depersist the object. This is currently not 
+    extensible. For a given mimetype the value must be set accordingly:
+    
+    Note - application/x-microsoft.net.object.binary.base64 is the format 
+    that the ResXResourceWriter will generate, however the reader can 
+    read any of the formats listed below.
+    
+    mimetype: application/x-microsoft.net.object.binary.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Binary.BinaryFormatter
+            : and then encoded with base64 encoding.
+    
+    mimetype: application/x-microsoft.net.object.soap.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Soap.SoapFormatter
+            : and then encoded with base64 encoding.
 
-        </xsd:element>
-    </xsd:schema>
-    <resheader name="resmimetype">
-        <value>text/microsoft-resx</value>
-    </resheader>
-    <resheader name="version">
-        <value>1.3</value>
-    </resheader>
-    <resheader name="reader">
-        <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
-    </resheader>
-    <resheader name="writer">
-        <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
-    </resheader>
-    <data name="ChatPluginDisabled" xml:space="preserve">
-        <value>Fader plugin disabled.</value>
-    </data>
-    <data name="ChatPluginEnabled" xml:space="preserve">
-        <value>Fader plugin enabled.</value>
-    </data>
-    <data name="AboutAuthor" xml:space="preserve">
-        <value>Author:</value>
-    </data>
-    <data name="AboutVersion" xml:space="preserve">
-        <value>Version:</value>
-    </data>
-    <data name="AboutIssues" xml:space="preserve">
-        <value>Issues</value>
-    </data>
-    <data name="AboutThread" xml:space="preserve">
-        <value>Discord Thread</value>
-    </data>
-    <data name="AboutKoFi" xml:space="preserve">
-        <value>Ko-Fi Tip</value>
-    </data>
-    <data name="TabAbout" xml:space="preserve">
-        <value>About</value>
-    </data>
-    <data name="TabSettings" xml:space="preserve">
-        <value>Settings</value>
-    </data>
-    <data name="SettingsGeneralHeader" xml:space="preserve">
-        <value>General Settings</value>
-    </data>
-    <data name="SettingsFocusKey" xml:space="preserve">
-        <value>User Focus key:</value>
-    </data>
-    <data name="SettingsFocusKeyTooltip" xml:space="preserve">
-        <value>When held interface will be setup as per 'UserFocus' column.</value>
-    </data>
-    <data name="SettingsFocusHotbarUnlock" xml:space="preserve">
-        <value>Always User Focus when hotbars are unlocked</value>
-    </data>
-    <data name="SettingsFocusHotbarUnlockTooltip" xml:space="preserve">
-        <value>When hotbars or crossbars are unlocked always setup to the UserFocus column.</value>
-    </data>
-    <data name="SettingsEmoteActivity" xml:space="preserve">
-        <value>Emotes trigger chat activity</value>
-    </data>
-    <data name="SettingsSystemTrigger" xml:space="preserve">
-        <value>System messages trigger chat activity</value>
-    </data>
-    <data name="SettingsDelay" xml:space="preserve">
-        <value>Default delay:</value>
-    </data>
-    <data name="SettingsDelayTooltip" xml:space="preserve">
-        <value>Amount of time it takes to go back to the `Idle` column.</value>
-    </data>
-    <data name="SettingsChatActivityTimeout" xml:space="preserve">
-        <value>Chat activity timeout:</value>
-    </data>
-    <data name="SettingsMultiSelectionHint" xml:space="preserve">
-        <value>Hint: You can select multiple elements to be edited at the same time.
+    mimetype: application/x-microsoft.net.object.bytearray.base64
+    value   : The object must be serialized into a byte array 
+            : using a System.ComponentModel.TypeConverter
+            : and then encoded with base64 encoding.
+    -->
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="ChatPluginDisabled" xml:space="preserve">
+    <value>Fader plugin disabled.</value>
+  </data>
+  <data name="ChatPluginEnabled" xml:space="preserve">
+    <value>Fader plugin enabled.</value>
+  </data>
+  <data name="AboutAuthor" xml:space="preserve">
+    <value>Author:</value>
+  </data>
+  <data name="AboutVersion" xml:space="preserve">
+    <value>Version:</value>
+  </data>
+  <data name="AboutIssues" xml:space="preserve">
+    <value>Issues</value>
+  </data>
+  <data name="AboutThread" xml:space="preserve">
+    <value>Discord Thread</value>
+  </data>
+  <data name="AboutKoFi" xml:space="preserve">
+    <value>Ko-Fi Tip</value>
+  </data>
+  <data name="TabAbout" xml:space="preserve">
+    <value>About</value>
+  </data>
+  <data name="TabSettings" xml:space="preserve">
+    <value>Settings</value>
+  </data>
+  <data name="SettingsGeneralHeader" xml:space="preserve">
+    <value>General Settings</value>
+  </data>
+  <data name="SettingsFocusKey" xml:space="preserve">
+    <value>User Focus key:</value>
+  </data>
+  <data name="SettingsFocusKeyTooltip" xml:space="preserve">
+    <value>When held interface will be setup as per 'UserFocus' column.</value>
+  </data>
+  <data name="SettingsFocusHotbarUnlock" xml:space="preserve">
+    <value>Always User Focus when hotbars are unlocked</value>
+  </data>
+  <data name="SettingsFocusHotbarUnlockTooltip" xml:space="preserve">
+    <value>When hotbars or crossbars are unlocked always setup to the UserFocus column.</value>
+  </data>
+  <data name="SettingsEmoteActivity" xml:space="preserve">
+    <value>Emotes trigger chat activity</value>
+  </data>
+  <data name="SettingsSystemTrigger" xml:space="preserve">
+    <value>System messages trigger chat activity</value>
+  </data>
+  <data name="SettingsDelay" xml:space="preserve">
+    <value>Default delay:</value>
+  </data>
+  <data name="SettingsDelayTooltip" xml:space="preserve">
+    <value>Amount of time it takes to go back to the `Idle` column.</value>
+  </data>
+  <data name="SettingsChatActivityTimeout" xml:space="preserve">
+    <value>Chat activity timeout:</value>
+  </data>
+  <data name="SettingsMultiSelectionHint" xml:space="preserve">
+    <value>Hint: You can select multiple elements to be edited at the same time.
 Configuration of the element that was selected first will override the rest.</value>
-    </data>
-    <data name="SettingsElementConfiguration" xml:space="preserve">
-        <value>{0} Configuration</value>
-    </data>
-    <data name="SettingsOthers" xml:space="preserve">
-        <value>others</value>
-    </data>
-    <data name="SettingsSyncToElement" xml:space="preserve">
-        <value>Sync selected to {0}</value>
-    </data>
-    <data name="Seconds" xml:space="preserve">
-        <value>seconds</value>
-    </data>
-    <data name="StateEnemyTarget" xml:space="preserve">
-        <value>Enemy Target</value>
-    </data>
-    <data name="StatePlayerTarget" xml:space="preserve">
-        <value>Player Target</value>
-    </data>
-    <data name="StateNPCTarget" xml:space="preserve">
-        <value>NPC Target</value>
-    </data>
-    <data name="StateWeaponUnsheathed" xml:space="preserve">
-        <value>Weapon Unsheathed</value>
-    </data>
-    <data name="StateInSanctuary" xml:space="preserve">
-        <value>In Sanctuary</value>
-    </data>
-    <data name="StateInFateArea" xml:space="preserve">
-        <value>In Fate Area</value>
-    </data>
-    <data name="StateIsMoving" xml:space="preserve">
-        <value>Is Moving</value>
-    </data>
-    <data name="StateIslandSanctuary" xml:space="preserve">
-        <value>Island Sanctuary</value>
-    </data>
-    <data name="StateChatActivity" xml:space="preserve">
-        <value>Chat Activity</value>
-    </data>
-    <data name="StateChatFocus" xml:space="preserve">
-        <value>Chat Focus</value>
-    </data>
-    <data name="StateUserFocus" xml:space="preserve">
-        <value>User Focus</value>
-    </data>
-    <data name="StateAltKey" xml:space="preserve">
-        <value>ALT Key Focus</value>
-    </data>
-    <data name="StateCtrlKey" xml:space="preserve">
-        <value>CTRL Key Focus</value>
-    </data>
-    <data name="StateShiftKey" xml:space="preserve">
-        <value>SHIFT Key Focus</value>
-    </data>
-    <data name="StateNone" xml:space="preserve">
-        <value>None</value>
-    </data>
-    <data name="StateDefault" xml:space="preserve">
-        <value>Default</value>
-    </data>
-    <data name="StateDuty" xml:space="preserve">
-        <value>Duty</value>
-    </data>
-    <data name="StateCrafting" xml:space="preserve">
-        <value>Crafting</value>
-    </data>
-    <data name="StateGathering" xml:space="preserve">
-        <value>Gathering</value>
-    </data>
-    <data name="StateMounted" xml:space="preserve">
-        <value>Mounted</value>
-    </data>
-    <data name="StateCombat" xml:space="preserve">
-        <value>Combat</value>
-    </data>
-    <data name="SettingsShow" xml:space="preserve">
-        <value>Show</value>
-    </data>
-    <data name="SettingsHide" xml:space="preserve">
-        <value>Hide</value>
-    </data>
-    <data name="SettingsUnknown" xml:space="preserve">
-        <value>Unknown</value>
-    </data>
-    <data name="ElementHotbar1" xml:space="preserve">
-        <value>Hotbar 1</value>
-    </data>
-    <data name="ElementHotbar2" xml:space="preserve">
-        <value>Hotbar 2</value>
-    </data>
-    <data name="ElementHotbar3" xml:space="preserve">
-        <value>Hotbar 3</value>
-    </data>
-    <data name="ElementHotbar4" xml:space="preserve">
-        <value>Hotbar 4</value>
-    </data>
-    <data name="ElementHotbar5" xml:space="preserve">
-        <value>Hotbar 5</value>
-    </data>
-    <data name="ElementHotbar6" xml:space="preserve">
-        <value>Hotbar 6</value>
-    </data>
-    <data name="ElementHotbar7" xml:space="preserve">
-        <value>Hotbar 7</value>
-    </data>
-    <data name="ElementHotbar8" xml:space="preserve">
-        <value>Hotbar 8</value>
-    </data>
-    <data name="ElementHotbar9" xml:space="preserve">
-        <value>Hotbar 9</value>
-    </data>
-    <data name="ElementHotbar10" xml:space="preserve">
-        <value>Hotbar 10</value>
-    </data>
-    <data name="ElementCrossHotbar" xml:space="preserve">
-        <value>Cross Hotbar</value>
-    </data>
-    <data name="ElementPetHotbar" xml:space="preserve">
-        <value>Pet Hotbar</value>
-    </data>
-    <data name="ElementContextActionHotbar" xml:space="preserve">
-        <value>Context Action Hotbar</value>
-    </data>
-    <data name="ElementCastbar" xml:space="preserve">
-        <value>Cast Bar</value>
-    </data>
-    <data name="ElementExperienceBar" xml:space="preserve">
-        <value>Experience Bar</value>
-    </data>
-    <data name="ElementInventoryGrid" xml:space="preserve">
-        <value>Inventory Grid</value>
-    </data>
-    <data name="ElementScenarioGuide" xml:space="preserve">
-        <value>Scenario Guide</value>
-    </data>
-    <data name="ElementIslekeepIndex" xml:space="preserve">
-        <value>Islekeep's Index</value>
-    </data>
-    <data name="ElementDutyList" xml:space="preserve">
-        <value>Duty List</value>
-    </data>
-    <data name="ElementServerInformation" xml:space="preserve">
-        <value>Server Information</value>
-    </data>
-    <data name="ElementMainMenu" xml:space="preserve">
-        <value>Main Menu</value>
-    </data>
-    <data name="ElementTargetInfo" xml:space="preserve">
-        <value>Target Info</value>
-    </data>
-    <data name="ElementPartyList" xml:space="preserve">
-        <value>Party List</value>
-    </data>
-    <data name="ElementLimitBreak" xml:space="preserve">
-        <value>Limit Break</value>
-    </data>
-    <data name="ElementStatusEnhancements" xml:space="preserve">
-        <value>Status Enhancements</value>
-    </data>
-    <data name="ElementStatusEnfeeblements" xml:space="preserve">
-        <value>Status Enfeeblements</value>
-    </data>
-    <data name="ElementStatusOther" xml:space="preserve">
-        <value>Status Other</value>
-    </data>
-    <data name="ElementUnknown" xml:space="preserve">
-        <value>Unknown</value>
-    </data>
-    <data name="ElementJob" xml:space="preserve">
-        <value>Job</value>
-    </data>
-    <data name="ElementCurrency" xml:space="preserve">
-        <value>Currency</value>
-    </data>
-    <data name="ElementQuestLog" xml:space="preserve">
-        <value>QuestLog</value>
-    </data>
-    <data name="ElementChat" xml:space="preserve">
-        <value>Chat</value>
-    </data>
-    <data name="ElementMinimap" xml:space="preserve">
-        <value>Minimap</value>
-    </data>
-    <data name="ElementNameplate" xml:space="preserve">
-        <value>Nameplates</value>
-    </data>
-    <data name="ElementParameters" xml:space="preserve">
-        <value>Parameters</value>
-    </data>
-    <data name="ElementStatus" xml:space="preserve">
-        <value>Status</value>
-    </data>
-    <data name="ElementTooltipChat" xml:space="preserve">
-        <value>Should be always visible if focused, albeit feature can be buggy with some configurations</value>
-    </data>
-    <data name="ElementTooltipCrosshotbar" xml:space="preserve">
-        <value>WXHB is always visible, unless the option 'Position WXHB separately from XHB' is used</value>
-    </data>
-    <data name="ElementTooltipActionHotbar" xml:space="preserve">
-        <value>Additional Actions (for example in Island, Criterion or certain fights)</value>
-    </data>
-    <data name="ElementTooltipPetHotbar" xml:space="preserve">
-        <value>Pet and mount actions</value>
-    </data>
-    <data name="ElementTooltipJob" xml:space="preserve">
-        <value>Job-specific UI</value>
-    </data>
-    <data name="ElementTooltipStatus" xml:space="preserve">
-        <value>Player status (when not split into 3 separate elements)</value>
-    </data>
-    <data name="ElementTooltipStatusEnfeeblements" xml:space="preserve">
-        <value>Player enfeeblements (when split into 3 separate elements)</value>
-    </data>
-    <data name="ElementTooltipStatusEnhancements" xml:space="preserve">
-        <value>Player enhancements (when split into 3 separate elements)</value>
-    </data>
-    <data name="ElementTooltipStatusOther" xml:space="preserve">
-        <value>Player other status (when split into 3 separate elements)</value>
-    </data>
+  </data>
+  <data name="SettingsElementConfiguration" xml:space="preserve">
+    <value>{0} Configuration</value>
+  </data>
+  <data name="SettingsOthers" xml:space="preserve">
+    <value>others</value>
+  </data>
+  <data name="SettingsSyncToElement" xml:space="preserve">
+    <value>Sync selected to {0}</value>
+  </data>
+  <data name="Seconds" xml:space="preserve">
+    <value>seconds</value>
+  </data>
+  <data name="StateEnemyTarget" xml:space="preserve">
+    <value>Enemy Target</value>
+  </data>
+  <data name="StatePlayerTarget" xml:space="preserve">
+    <value>Player Target</value>
+  </data>
+  <data name="StateNPCTarget" xml:space="preserve">
+    <value>NPC Target</value>
+  </data>
+  <data name="StateWeaponUnsheathed" xml:space="preserve">
+    <value>Weapon Unsheathed</value>
+  </data>
+  <data name="StateInSanctuary" xml:space="preserve">
+    <value>In Sanctuary</value>
+  </data>
+  <data name="StateInFateArea" xml:space="preserve">
+    <value>In Fate Area</value>
+  </data>
+  <data name="StateIsMoving" xml:space="preserve">
+    <value>Is Moving</value>
+  </data>
+  <data name="StateIslandSanctuary" xml:space="preserve">
+    <value>Island Sanctuary</value>
+  </data>
+  <data name="StateChatActivity" xml:space="preserve">
+    <value>Chat Activity</value>
+  </data>
+  <data name="StateChatFocus" xml:space="preserve">
+    <value>Chat Focus</value>
+  </data>
+  <data name="StateUserFocus" xml:space="preserve">
+    <value>User Focus</value>
+  </data>
+  <data name="StateAltKey" xml:space="preserve">
+    <value>ALT Key Focus</value>
+  </data>
+  <data name="StateCtrlKey" xml:space="preserve">
+    <value>CTRL Key Focus</value>
+  </data>
+  <data name="StateShiftKey" xml:space="preserve">
+    <value>SHIFT Key Focus</value>
+  </data>
+  <data name="StateNone" xml:space="preserve">
+    <value>None</value>
+  </data>
+  <data name="StateDefault" xml:space="preserve">
+    <value>Default</value>
+  </data>
+  <data name="StateDuty" xml:space="preserve">
+    <value>Duty</value>
+  </data>
+  <data name="StateCrafting" xml:space="preserve">
+    <value>Crafting</value>
+  </data>
+  <data name="StateGathering" xml:space="preserve">
+    <value>Gathering</value>
+  </data>
+  <data name="StateMounted" xml:space="preserve">
+    <value>Mounted</value>
+  </data>
+  <data name="StateCombat" xml:space="preserve">
+    <value>Combat</value>
+  </data>
+  <data name="SettingsShow" xml:space="preserve">
+    <value>Show</value>
+  </data>
+  <data name="SettingsHide" xml:space="preserve">
+    <value>Hide</value>
+  </data>
+  <data name="SettingsUnknown" xml:space="preserve">
+    <value>Unknown</value>
+  </data>
+  <data name="ElementHotbar1" xml:space="preserve">
+    <value>Hotbar 1</value>
+  </data>
+  <data name="ElementHotbar2" xml:space="preserve">
+    <value>Hotbar 2</value>
+  </data>
+  <data name="ElementHotbar3" xml:space="preserve">
+    <value>Hotbar 3</value>
+  </data>
+  <data name="ElementHotbar4" xml:space="preserve">
+    <value>Hotbar 4</value>
+  </data>
+  <data name="ElementHotbar5" xml:space="preserve">
+    <value>Hotbar 5</value>
+  </data>
+  <data name="ElementHotbar6" xml:space="preserve">
+    <value>Hotbar 6</value>
+  </data>
+  <data name="ElementHotbar7" xml:space="preserve">
+    <value>Hotbar 7</value>
+  </data>
+  <data name="ElementHotbar8" xml:space="preserve">
+    <value>Hotbar 8</value>
+  </data>
+  <data name="ElementHotbar9" xml:space="preserve">
+    <value>Hotbar 9</value>
+  </data>
+  <data name="ElementHotbar10" xml:space="preserve">
+    <value>Hotbar 10</value>
+  </data>
+  <data name="ElementCrossHotbar" xml:space="preserve">
+    <value>Cross Hotbar</value>
+  </data>
+  <data name="ElementPetHotbar" xml:space="preserve">
+    <value>Pet Hotbar</value>
+  </data>
+  <data name="ElementContextActionHotbar" xml:space="preserve">
+    <value>Context Action Hotbar</value>
+  </data>
+  <data name="ElementCastbar" xml:space="preserve">
+    <value>Cast Bar</value>
+  </data>
+  <data name="ElementExperienceBar" xml:space="preserve">
+    <value>Experience Bar</value>
+  </data>
+  <data name="ElementInventoryGrid" xml:space="preserve">
+    <value>Inventory Grid</value>
+  </data>
+  <data name="ElementScenarioGuide" xml:space="preserve">
+    <value>Scenario Guide</value>
+  </data>
+  <data name="ElementIslekeepIndex" xml:space="preserve">
+    <value>Islekeep's Index</value>
+  </data>
+  <data name="ElementDutyList" xml:space="preserve">
+    <value>Duty List</value>
+  </data>
+  <data name="ElementServerInformation" xml:space="preserve">
+    <value>Server Information</value>
+  </data>
+  <data name="ElementMainMenu" xml:space="preserve">
+    <value>Main Menu</value>
+  </data>
+  <data name="ElementTargetInfo" xml:space="preserve">
+    <value>Target Info</value>
+  </data>
+  <data name="ElementPartyList" xml:space="preserve">
+    <value>Party List</value>
+  </data>
+  <data name="ElementLimitBreak" xml:space="preserve">
+    <value>Limit Break</value>
+  </data>
+  <data name="ElementStatusEnhancements" xml:space="preserve">
+    <value>Status Enhancements</value>
+  </data>
+  <data name="ElementStatusEnfeeblements" xml:space="preserve">
+    <value>Status Enfeeblements</value>
+  </data>
+  <data name="ElementStatusOther" xml:space="preserve">
+    <value>Status Other</value>
+  </data>
+  <data name="ElementUnknown" xml:space="preserve">
+    <value>Unknown</value>
+  </data>
+  <data name="ElementJob" xml:space="preserve">
+    <value>Job</value>
+  </data>
+  <data name="ElementCurrency" xml:space="preserve">
+    <value>Currency</value>
+  </data>
+  <data name="ElementQuestLog" xml:space="preserve">
+    <value>QuestLog</value>
+  </data>
+  <data name="ElementChat" xml:space="preserve">
+    <value>Chat</value>
+  </data>
+  <data name="ElementMinimap" xml:space="preserve">
+    <value>Minimap</value>
+  </data>
+  <data name="ElementNameplate" xml:space="preserve">
+    <value>Nameplates</value>
+  </data>
+  <data name="ElementParameters" xml:space="preserve">
+    <value>Parameters</value>
+  </data>
+  <data name="ElementStatus" xml:space="preserve">
+    <value>Status</value>
+  </data>
+  <data name="ElementTooltipChat" xml:space="preserve">
+    <value>Should be always visible if focused, albeit feature can be buggy with some configurations</value>
+  </data>
+  <data name="ElementTooltipCrosshotbar" xml:space="preserve">
+    <value>WXHB is always visible, unless the option 'Position WXHB separately from XHB' is used</value>
+  </data>
+  <data name="ElementTooltipActionHotbar" xml:space="preserve">
+    <value>Additional Actions (for example in Island, Criterion or certain fights)</value>
+  </data>
+  <data name="ElementTooltipPetHotbar" xml:space="preserve">
+    <value>Pet and mount actions</value>
+  </data>
+  <data name="ElementTooltipJob" xml:space="preserve">
+    <value>Job-specific UI</value>
+  </data>
+  <data name="ElementTooltipStatus" xml:space="preserve">
+    <value>Player status (when not split into 3 separate elements)</value>
+  </data>
+  <data name="ElementTooltipStatusEnfeeblements" xml:space="preserve">
+    <value>Player enfeeblements (when split into 3 separate elements)</value>
+  </data>
+  <data name="ElementTooltipStatusEnhancements" xml:space="preserve">
+    <value>Player enhancements (when split into 3 separate elements)</value>
+  </data>
+  <data name="ElementTooltipStatusOther" xml:space="preserve">
+    <value>Player other status (when split into 3 separate elements)</value>
+  </data>
+  <data name="StateHover" xml:space="preserve">
+    <value>Hover</value>
+  </data>
+  <data name="Milliseconds" xml:space="preserve">
+    <value>milliseconds</value>
+  </data>
+  <data name="Opacity" xml:space="preserve">
+    <value>Opacity</value>
+  </data>
+  <data name="SettingsDisable" xml:space="preserve">
+    <value>Disable Element</value>
+  </data>
+  <data name="SettingsDisableTooltip" xml:space="preserve">
+    <value>Fully disables element at low opacity. Unchecked means the element remains interactable even when fully invisible.</value>
+  </data>
+  <data name="SettingsEnterTransition" xml:space="preserve">
+    <value>Fade In time:</value>
+  </data>
+  <data name="SettingsEnterTransitionTooltip" xml:space="preserve">
+    <value>Time in ms it takes for an element to fade in.</value>
+  </data>
+  <data name="SettingsExitTransition" xml:space="preserve">
+    <value>Fade Out time:</value>
+  </data>
+  <data name="SettingsExitTransitionTooltip" xml:space="preserve">
+    <value>Time in ms it takes for an element to fade out.</value>
+  </data>
+  <data name="StateWarning" xml:space="preserve">
+    <value>Warning: Disabled Elements cannot be hovered!</value>
+  </data>
 </root>

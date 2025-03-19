@@ -1,5 +1,5 @@
-﻿using System;
-using faderPlugin.Resources;
+﻿using faderPlugin.Resources;
+using System;
 
 namespace FaderPlugin.Data;
 

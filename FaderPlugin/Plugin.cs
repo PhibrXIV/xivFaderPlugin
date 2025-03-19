@@ -1,8 +1,3 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
-using System.Timers;
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Game.ClientState.Objects;
 using Dalamud.Game.ClientState.Objects.Enums;
@@ -13,16 +8,24 @@ using Dalamud.Interface.Windowing;
 using Dalamud.IoC;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
-using FaderPlugin.Data;
 using faderPlugin.Resources;
+using FaderPlugin.Data;
 using FaderPlugin.Windows.Config;
+using FFXIVClientStructs.FFXIV.Component.GUI;
+using ImGuiNET;
 using Lumina.Excel;
 using Lumina.Excel.Sheets;
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.Linq;
+using System.Numerics;
 
 namespace FaderPlugin;
 
 public class Plugin : IDalamudPlugin
 {
+    // Plugin services
     [PluginService] public static IDalamudPluginInterface PluginInterface { get; set; } = null!;
     [PluginService] public static IKeyState KeyState { get; set; } = null!;
     [PluginService] public static IFramework Framework { get; set; } = null!;
@@ -33,34 +36,45 @@ public class Plugin : IDalamudPlugin
     [PluginService] public static IGameGui GameGui { get; set; } = null!;
     [PluginService] public static ITargetManager TargetManager { get; set; } = null!;
     [PluginService] public static IDataManager Data { get; private set; } = null!;
-
+    // Configuration and windows.
     public readonly Configuration Config;
-
     private readonly WindowSystem WindowSystem = new("Fader");
     private readonly ConfigWindow ConfigWindow;
 
-    private readonly Dictionary<State, bool> StateMap = new();
+    // State maps and timers.
+    private readonly Dictionary<State, bool> StateMap = [];
     private bool StateChanged;
+    private long LastChatActivity = Environment.TickCount64;
+    private readonly Dictionary<string, bool> AddonHoverStates = [];
+    private HashSet<string> PreviousHoveredAddons = [];
+    private readonly Dictionary<string, Element> AddonNameToElement = [];
+    private readonly long OpacityUpdateEndTime = Environment.TickCount64;
+    private bool ConfigChanged;
 
-    // Idle State
-    private readonly Timer IdleTimer = new();
-    private bool HasIdled;
 
-    // Chat State
-    private readonly Timer ChatActivityTimer = new();
-    private bool HasChatActivity;
+    // Opacity Management
+    private readonly Dictionary<string, float> CurrentAlphas = [];
+    private readonly Dictionary<string, float> TargetAlphas = [];
+    private readonly Dictionary<string, bool> FinishingHover = [];
 
     // Commands
     private const string CommandName = "/pfader";
     private bool Enabled = true;
 
+    // Territory Excel sheet.
     private readonly ExcelSheet<TerritoryType> TerritorySheet;
+
+    // Delay management Utility
+    private readonly Dictionary<string, long> DelayTimers = [];
+    private readonly Dictionary<string, ConfigEntry> LastNonDefaultEntry = [];
+
+    // Enum Cache
+    private static readonly Element[] AllElements = Enum.GetValues<Element>();
+    private static readonly State[] AllStates = Enum.GetValues<State>();
 
     public Plugin()
     {
         LoadConfig(out Config);
-        Config.OnSave += UpdateAddonVisibility;
-
         LanguageChanged(PluginInterface.UiLanguage);
 
         ConfigWindow = new ConfigWindow(this);
@@ -77,18 +91,24 @@ public class Plugin : IDalamudPlugin
             HelpMessage = "Opens settings\n't' toggles whether it's enabled.\n'on' enables the plugin\n'off' disables the plugin."
         });
 
-        foreach(State state in Enum.GetValues(typeof(State)))
+        foreach (var state in AllStates)
             StateMap[state] = state == State.Default;
 
-        // We don't want a looping timer, only once
-        IdleTimer.AutoReset = false;
-        IdleTimer.Elapsed += (_, _) => HasIdled = true;
-        IdleTimer.Start();
+        foreach (var element in AllElements)
+        {
+            if (element.ShouldIgnoreElement())
+                continue;
 
-        ChatActivityTimer.Elapsed += (_, _) => HasChatActivity = false;
+            var addonNames = ElementUtil.GetAddonName(element);
+            foreach (var addonName in addonNames)
+            {
+                AddonNameToElement.TryAdd(addonName, element);
+            }
+        }
 
         ChatGui.ChatMessage += OnChatMessage;
         PluginInterface.LanguageChanged += LanguageChanged;
+        Config.OnSave += OnConfigChanged;
 
         // Recover from previous misconfiguration
         if (Config.DefaultDelay == 0)
@@ -97,19 +117,19 @@ public class Plugin : IDalamudPlugin
 
     public void Dispose()
     {
+        // Clean up (unhide all elements)
+        ForceShowAllElements();
+
         PluginInterface.LanguageChanged -= LanguageChanged;
-        Config.OnSave -= UpdateAddonVisibility;
         Framework.Update -= OnFrameworkUpdate;
         CommandManager.RemoveHandler(CommandName);
         ChatGui.ChatMessage -= OnChatMessage;
-        UpdateAddonVisibility(true);
-
-        IdleTimer.Dispose();
-        ChatActivityTimer.Dispose();
+        Config.OnSave -= OnConfigChanged;
 
         ConfigWindow.Dispose();
         WindowSystem.RemoveWindow(ConfigWindow);
     }
+
 
     private void LanguageChanged(string langCode)
     {
@@ -119,24 +139,16 @@ public class Plugin : IDalamudPlugin
     private void LoadConfig(out Configuration configuration)
     {
         var existingConfig = PluginInterface.GetPluginConfig();
-
-        if(existingConfig is { Version: 6 })
-            configuration = (Configuration) existingConfig;
-        else
-            configuration = new Configuration();
-
+        configuration = (existingConfig is { Version: 6 })
+            ? (Configuration)existingConfig
+            : new Configuration();
         configuration.Initialize();
     }
 
-    private void DrawUi()
-    {
-        WindowSystem.Draw();
-    }
+    private void DrawUi() => WindowSystem.Draw();
 
-    private void DrawConfigUi()
-    {
-        ConfigWindow.Toggle();
-    }
+    private void DrawConfigUi() => ConfigWindow.Toggle();
+
 
     private void FaderCommandHandler(string s, string arguments)
     {
@@ -160,6 +172,11 @@ public class Plugin : IDalamudPlugin
         }
     }
 
+    private void OnConfigChanged()
+    {
+        ConfigChanged = true;
+    }
+
     private void OnChatMessage(XivChatType type, int _, ref SeString sender, ref SeString message, ref bool isHandled)
     {
         // Don't trigger chat for non-standard chat channels.
@@ -168,148 +185,332 @@ public class Plugin : IDalamudPlugin
             && (!Config.EmoteActivity || !Constants.EmoteChatTypes.Contains(type)))
             return;
 
-        HasChatActivity = true;
-
-        ChatActivityTimer.Stop();
-        ChatActivityTimer.Interval = Config.ChatActivityTimeout;
-        ChatActivityTimer.Start();
+        LastChatActivity = Environment.TickCount64;
     }
 
-    private void OnFrameworkUpdate(IFramework framework) {
-        if(!IsSafeToWork())
+    private bool IsChatActive() => (Environment.TickCount64 - LastChatActivity) < Config.ChatActivityTimeout;
+
+    private void OnFrameworkUpdate(IFramework framework)
+    {
+        if (!IsSafeToWork())
             return;
 
         StateChanged = false;
+        UpdateInputStates();
+        UpdateMouseHoverState();
 
-        // User Focus
-        UpdateStateMap(State.UserFocus, KeyState[Config.OverrideKey] || (Config.FocusOnHotbarsUnlock && !Addon.AreHotbarsLocked()));
+        if (StateChanged || ConfigChanged || !DoAlphasMatch() || AnyDelayExpired())
+        {
+            UpdateAddonOpacity();
+            ConfigChanged = false;
+        }
+    }
 
-        // Key Focus
-        UpdateStateMap(State.AltKeyFocus, KeyState[(int) Constants.OverrideKeys.Alt]);
-        UpdateStateMap(State.CtrlKeyFocus, KeyState[(int) Constants.OverrideKeys.Ctrl]);
-        UpdateStateMap(State.ShiftKeyFocus, KeyState[(int) Constants.OverrideKeys.Shift]);
+    #region Input & State Management
 
-        // Chat Focus
-        UpdateStateMap(State.ChatFocus, Addon.IsChatFocused());
-
-        // Chat Activity
-        UpdateStateMap(State.ChatActivity, HasChatActivity);
-
-        // Combat
-        UpdateStateMap(State.IsMoving, Addon.IsMoving());
-
-        // Combat
-        UpdateStateMap(State.Combat, Condition[ConditionFlag.InCombat]);
-
-        // Weapon Unsheathed
-        UpdateStateMap(State.WeaponUnsheathed, Addon.IsWeaponUnsheathed());
-
-        // In Sanctuary (e.g Cities, Aetheryte Villages)
-        UpdateStateMap(State.InSanctuary, Addon.InSanctuary());
-
-        // Island Sanctuary
-        var inIslandSanctuary = TerritorySheet.HasRow(ClientState.TerritoryType) && TerritorySheet.GetRow(ClientState.TerritoryType).TerritoryIntendedUse.RowId == 49;
-        UpdateStateMap(State.IslandSanctuary, inIslandSanctuary);
-
-        // In Fate Area
-        UpdateStateMap(State.InFate, Addon.InFate());
+    private void UpdateInputStates()
+    {
+        UpdateState(State.UserFocus, KeyState[Config.OverrideKey] || (Config.FocusOnHotbarsUnlock && !Addon.AreHotbarsLocked()));
+        UpdateState(State.AltKeyFocus, KeyState[(int)Constants.OverrideKeys.Alt]);
+        UpdateState(State.CtrlKeyFocus, KeyState[(int)Constants.OverrideKeys.Ctrl]);
+        UpdateState(State.ShiftKeyFocus, KeyState[(int)Constants.OverrideKeys.Shift]);
+        UpdateState(State.ChatFocus, Addon.IsChatFocused());
+        UpdateState(State.ChatActivity, IsChatActive());
+        UpdateState(State.IsMoving, Addon.IsMoving());
+        UpdateState(State.Combat, Condition[ConditionFlag.InCombat]);
+        UpdateState(State.WeaponUnsheathed, Addon.IsWeaponUnsheathed());
+        UpdateState(State.InSanctuary, Addon.InSanctuary());
+        UpdateState(State.InFate, Addon.InFate());
 
         var target = TargetManager.Target;
-        // Enemy Target
-        UpdateStateMap(State.EnemyTarget, target?.ObjectKind == ObjectKind.BattleNpc);
+        UpdateState(State.EnemyTarget, target?.ObjectKind == ObjectKind.BattleNpc);
+        UpdateState(State.PlayerTarget, target?.ObjectKind == ObjectKind.Player);
+        UpdateState(State.NPCTarget, target?.ObjectKind == ObjectKind.EventNpc);
+        UpdateState(State.Crafting, Condition[ConditionFlag.Crafting]);
+        UpdateState(State.Gathering, Condition[ConditionFlag.Gathering]);
+        UpdateState(State.Mounted, Condition[ConditionFlag.Mounted] || Condition[ConditionFlag.Mounted2]);
 
-        // Player Target
-        UpdateStateMap(State.PlayerTarget, target?.ObjectKind == ObjectKind.Player);
+        var inIslandSanctuary = (TerritorySheet.TryGetRow(ClientState.TerritoryType, out var territory) && territory.TerritoryIntendedUse.RowId == 49);
+        UpdateState(State.IslandSanctuary, inIslandSanctuary);
 
-        // NPC Target
-        UpdateStateMap(State.NPCTarget, target?.ObjectKind == ObjectKind.EventNpc);
+        var boundByDuty = Condition[ConditionFlag.BoundByDuty]
+                          || Condition[ConditionFlag.BoundByDuty56]
+                          || Condition[ConditionFlag.BoundByDuty95];
+        UpdateState(State.Duty, !inIslandSanctuary && boundByDuty);
 
-        // Crafting
-        UpdateStateMap(State.Crafting, Condition[ConditionFlag.Crafting]);
+        var occupied = Condition[ConditionFlag.Occupied]
+          || Condition[ConditionFlag.Occupied30]
+          || Condition[ConditionFlag.Occupied33]
+          || Condition[ConditionFlag.Occupied38]
+          || Condition[ConditionFlag.Occupied39]
+          || Condition[ConditionFlag.OccupiedInCutSceneEvent]
+          || Condition[ConditionFlag.OccupiedInEvent]
+          || Condition[ConditionFlag.OccupiedSummoningBell]
+          || Condition[ConditionFlag.OccupiedInQuestEvent];
 
-        // Gathering
-        UpdateStateMap(State.Gathering, Condition[ConditionFlag.Gathering]);
-
-        // Mounted
-        UpdateStateMap(State.Mounted, Condition[ConditionFlag.Mounted] || Condition[ConditionFlag.Mounted2]);
-
-        // Duty
-        var boundByDuty = Condition[ConditionFlag.BoundByDuty] || Condition[ConditionFlag.BoundByDuty56] || Condition[ConditionFlag.BoundByDuty95];
-        UpdateStateMap(State.Duty, !inIslandSanctuary && boundByDuty);
-
-        // Only update display state if a state has changed.
-        if(StateChanged || HasIdled || Addon.HasAddonStateChanged("HudLayout"))
-        {
-            UpdateAddonVisibility();
-
-            // Always set Idled to false to prevent looping
-            HasIdled = false;
-
-            // Only start idle timer if there was a state change
-            if(StateChanged && Config.DefaultDelayEnabled)
-            {
-                // If idle transition is enabled reset the idle state and start the timer.
-                IdleTimer.Stop();
-                IdleTimer.Interval = Config.DefaultDelay;
-                IdleTimer.Start();
-            }
-        }
-    }
-
-    private void UpdateStateMap(State state, bool value)
-    {
-        if (StateMap[state] == value)
-            return;
-
-        StateMap[state] = value;
-        StateChanged = true;
-    }
-
-    private void UpdateAddonVisibility()
-    {
-        UpdateAddonVisibility(false);
-    }
-
-    private void UpdateAddonVisibility(bool forceShow)
-    {
-        if(!IsSafeToWork())
-            return;
-
-        forceShow = !Enabled || forceShow || Addon.IsHudManagerOpen();
-
-        foreach(var element in Enum.GetValues<Element>())
-        {
-            var addonNames = ElementUtil.GetAddonName(element);
-            if(addonNames.Length == 0)
-                continue;
-
-            var setting = Setting.Unknown;
-            if(forceShow)
-                setting = Setting.Show;
-
-            if(setting == Setting.Unknown)
-            {
-                var elementConfig = Config.GetElementConfig(element);
-
-                var selected = elementConfig.FirstOrDefault(entry => StateMap[entry.state]);
-                if (selected is not null && (selected.state != State.Default || !Config.DefaultDelayEnabled || HasIdled))
-                    setting = selected.setting;
-            }
-
-            if(setting == Setting.Unknown)
-                continue;
-
-            foreach(var addonName in addonNames)
-                Addon.SetAddonVisibility(addonName, setting == Setting.Show);
-        }
+        UpdateState(State.Occupied, occupied);
     }
 
     /// <summary>
-    /// Returns whether it is safe for the plugin to perform work,
-    /// dependent on whether the game is on a login or loading screen.
+    /// Collects all addon hover states
     /// </summary>
-    private bool IsSafeToWork()
+    private void UpdateHoverStates()
     {
-        return !Condition[ConditionFlag.BetweenAreas] && ClientState.IsLoggedIn;
+        var mousePos = ImGui.GetMousePos();
+        AddonHoverStates.Clear();
+
+        foreach (var addonName in AddonNameToElement.Keys)
+        {
+            // Compute the hover state once per addon.
+            AddonHoverStates[addonName] = IsAddonHovered(addonName, mousePos);
+        }
     }
+
+
+    private void UpdateMouseHoverState()
+    {
+        // Update the hover states for all addons.
+        UpdateHoverStates();
+
+        var currentHovered = new HashSet<string>(
+            AddonHoverStates.Where(kvp => kvp.Value).Select(kvp => kvp.Key)
+        );
+
+        if (!currentHovered.SequenceEqual(PreviousHoveredAddons))
+            StateChanged = true;
+
+        PreviousHoveredAddons = currentHovered;
+
+        var hoverDetected = currentHovered.Count != 0;
+        UpdateState(State.Hover, hoverDetected);
+    }
+
+
+
+    private void UpdateState(State state, bool value)
+    {
+        if (StateMap[state] != value)
+        {
+            StateMap[state] = value;
+            StateChanged = true;
+        }
+    }
+
+    #endregion
+
+    #region Opacity & Visibility Management
+
+    private void UpdateAddonOpacity()
+    {
+        if (!IsSafeToWork())
+            return;
+
+        var forceShow = !Enabled || Addon.IsHudManagerOpen();
+
+        if (forceShow)
+        {
+            foreach (var addonName in AddonNameToElement.Keys)
+            {
+                Addon.SetAddonVisibility(addonName, true);
+                FinishingHover[addonName] = false;
+            }
+            return;
+        }
+
+        // If delay is disabled, clear any stored delay state.
+        if (!Config.DefaultDelayEnabled)
+        {
+            DelayTimers.Clear();
+            LastNonDefaultEntry.Clear();
+        }
+
+        foreach (var addonName in AddonNameToElement.Keys)
+        {
+            var element = AddonNameToElement[addonName];
+            var elementConfig = Config.GetElementConfig(element);
+            var isHovered = AddonHoverStates.TryGetValue(addonName, out var hovered) && hovered;
+
+            var candidate = GetCandidateConfig(addonName, elementConfig, isHovered);
+            var effectiveSetting = GetEffectiveSetting(candidate);
+
+            var currentAlpha = CurrentAlphas.TryGetValue(addonName, out var alpha) ? alpha : Config.DefaultAlpha;
+            var targetAlpha = CalculateTargetAlpha(candidate, effectiveSetting, isHovered, currentAlpha);
+
+            TargetAlphas[addonName] = targetAlpha;
+
+            var isHoverState = (candidate.state == State.Hover);
+
+            if (isHovered || (FinishingHover.TryGetValue(addonName, out var finishing) && finishing))
+            {
+                if (isHoverState)
+                    FinishingHover[addonName] = true;
+
+                if (currentAlpha < candidate.Opacity - 0.001f)
+                {
+                    targetAlpha = candidate.Opacity;
+                    TargetAlphas[addonName] = targetAlpha;
+                }
+                else if (!isHovered)
+                {
+                    FinishingHover[addonName] = false;
+                }
+            }
+            else
+            {
+                FinishingHover[addonName] = false;
+            }
+
+            var transitionSpeed = (targetAlpha > currentAlpha)
+                ? Config.EnterTransitionSpeed
+                : Config.ExitTransitionSpeed;
+
+            currentAlpha = MoveTowards(currentAlpha, targetAlpha, transitionSpeed * (float)Framework.UpdateDelta.TotalSeconds);
+            CurrentAlphas[addonName] = currentAlpha;
+            Addon.SetAddonOpacity(addonName, currentAlpha);
+
+            var defaultDisabled = (candidate.state == State.Default && candidate.setting == Setting.Hide);
+            var hidden = defaultDisabled && currentAlpha < 0.05f;
+            Addon.SetAddonVisibility(addonName, !hidden);
+        }
+    }
+
+
+    private ConfigEntry GetCandidateConfig(string addonName, List<ConfigEntry> elementConfig, bool isHovered)
+    {
+        // Prefer Hover state when applicable.
+        var candidate = isHovered
+            ? elementConfig.FirstOrDefault(e => e.state == State.Hover)
+            : null;
+
+        // Fallback: choose an active non-hover state or default.
+        candidate ??= elementConfig.FirstOrDefault(e => StateMap[e.state] && e.state != State.Hover)
+                        ?? elementConfig.FirstOrDefault(e => e.state == State.Default);
+
+        var now = Environment.TickCount64;
+        if (candidate != null && candidate.state != State.Default)
+        {
+            // Record the non-default state with a timestamp.
+            DelayTimers[addonName] = now;
+            LastNonDefaultEntry[addonName] = candidate;
+
+            // Force non-default states to Show.
+            if (candidate.setting == Setting.Hide)
+            {
+                candidate.setting = Setting.Show;
+            }
+        }
+        else if (candidate != null && candidate.state == State.Default && Config.DefaultDelayEnabled)
+        {
+            // Check if there's a recent non-default state that should be used.
+            if (DelayTimers.TryGetValue(addonName, out var start) &&
+                (now - start) < Config.DefaultDelay)
+            {
+                if (LastNonDefaultEntry.TryGetValue(addonName, out var nonDefault))
+                {
+                    candidate = nonDefault;
+                }
+            }
+            else
+            {
+                // Delay expired; clear stored values.
+                DelayTimers.Remove(addonName);
+                LastNonDefaultEntry.Remove(addonName);
+            }
+        }
+
+        return candidate!;
+    }
+
+
+    private Setting GetEffectiveSetting(ConfigEntry candidate)
+    {
+        if (!Enabled || Addon.IsHudManagerOpen())
+            return Setting.Show;
+        return candidate.setting;
+    }
+
+    private static float CalculateTargetAlpha(ConfigEntry candidate, Setting effectiveSetting, bool isHovered, float currentAlpha)
+    {
+        if (candidate.state == State.Hover)
+        {
+            return isHovered ? candidate.Opacity : currentAlpha;
+        }
+        return (effectiveSetting == Setting.Show) ? candidate.Opacity : 0.0f;
+    }
+
+    /// <summary>
+    /// Smoothly moves current value toward target value.
+    /// </summary>
+    private static float MoveTowards(float current, float target, float maxDelta)
+    {
+        // TODO: add easing functions perhaps?
+        if (Math.Abs(target - current) <= maxDelta)
+            return target;
+        return current + Math.Sign(target - current) * maxDelta;
+    }
+
+    /// <summary>
+    /// Checks if the addon identified by addonName is currently hovered.
+    /// </summary>
+    private unsafe bool IsAddonHovered(string addonName, Vector2 mousePos)
+    {
+        var addonPointer = GameGui.GetAddonByName(addonName);
+        if (addonPointer == nint.Zero)
+            return false;
+
+        var addon = (AtkUnitBase*)addonPointer;
+        float posX = addon->GetX();
+        float posY = addon->GetY();
+        var width = addon->GetScaledWidth(true);
+        var height = addon->GetScaledHeight(true);
+
+        return mousePos.X >= posX && mousePos.X <= posX + width &&
+               mousePos.Y >= posY && mousePos.Y <= posY + height;
+    }
+
+    /// <summary>
+    /// Forces all elements to be visible and fully opaque.
+    /// </summary>
+    private void ForceShowAllElements()
+    {
+        foreach (var addonName in AddonNameToElement.Keys)
+        {
+            Addon.SetAddonOpacity(addonName, 1.0f);
+            Addon.SetAddonVisibility(addonName, true);
+        }
+    }
+
+
+    #endregion
+
+    #region Helper Methods
+    private bool DoAlphasMatch()
+    {
+        // Check if both dictionaries have the same number of entries.
+        if (TargetAlphas.Count != CurrentAlphas.Count)
+            return false;
+
+        foreach (var kvp in TargetAlphas)
+        {
+            if (!CurrentAlphas.TryGetValue(kvp.Key, out var currentAlpha) ||
+                Math.Abs(currentAlpha - kvp.Value) > 0.001f)
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private bool AnyDelayExpired()
+    {
+        var now = Environment.TickCount64;
+        return DelayTimers.Values.Any(timer => (now - timer) >= Config.DefaultDelay);
+    }
+
+    /// <summary>
+    /// Checks if it is safe for the plugin to perform work.
+    /// </summary>
+    private bool IsSafeToWork() => !Condition[ConditionFlag.BetweenAreas] && ClientState.IsLoggedIn;
+
+    #endregion
 }
