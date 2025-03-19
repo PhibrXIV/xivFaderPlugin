@@ -427,4 +427,7 @@ Configuration of the element that was selected first will override the rest.</va
   <data name="StateWarning" xml:space="preserve">
     <value>Warning: Disabled Elements cannot be hovered!</value>
   </data>
+  <data name="StateOccupied" xml:space="preserve">
+      <value>Occupied</value>
+  </data>
 </root>

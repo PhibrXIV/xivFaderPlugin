@@ -48,7 +48,6 @@ public class Plugin : IDalamudPlugin
     private readonly Dictionary<string, bool> AddonHoverStates = [];
     private HashSet<string> PreviousHoveredAddons = [];
     private readonly Dictionary<string, Element> AddonNameToElement = [];
-    private readonly long OpacityUpdateEndTime = Environment.TickCount64;
     private bool ConfigChanged;
 
 

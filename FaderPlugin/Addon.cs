@@ -17,8 +17,6 @@ public static unsafe class Addon
 
     private static readonly Dictionary<string, (short X, short Y)> StoredPositions = [];
 
-    private static readonly Dictionary<string, bool> CachedAddonOpenState = [];
-
     #region Visibility and Position
 
     public static void SetAddonVisibility(string name, bool isVisible)
@@ -33,9 +31,7 @@ public static unsafe class Addon
         {
             // Restore the element position if previously hidden.
             if (StoredPositions.TryGetValue(name, out var pos) && (addon->X == -9999 || addon->Y == -9999))
-            {
                 addon->SetPosition(pos.X, pos.Y);
-            }
         }
         else
         {
@@ -48,7 +44,7 @@ public static unsafe class Addon
     }
 
     /// <summary>
-    /// Sets the alpha (transparency) of an addon. 
+    /// Sets the alpha (transparency) of an addon.
     /// Value range is 0.0f (fully transparent) to 1.0f (fully opaque).
     /// </summary>
     /// <param name="addonName">The name of the addon.</param>
@@ -90,13 +86,7 @@ public static unsafe class Addon
         var width = (short)addon->GetScaledWidth(true);
         var height = (short)addon->GetScaledHeight(true);
 
-        return new AddonPosition(
-            true,
-            addon->X,
-            addon->Y,
-            width,
-            height
-        );
+        return new AddonPosition(true, addon->X, addon->Y, width, height);
     }
 
     #endregion
@@ -104,19 +94,7 @@ public static unsafe class Addon
     #region Addon Open/Close State
 
     private static bool IsAddonOpen(string name)
-    {
-        var addonPointer = Plugin.GameGui.GetAddonByName(name);
-        return addonPointer != nint.Zero;
-    }
-
-    public static bool HasAddonStateChanged(string name)
-    {
-        var currentState = IsAddonOpen(name);
-        var changed = !CachedAddonOpenState.ContainsKey(name) || CachedAddonOpenState[name] != currentState;
-
-        CachedAddonOpenState[name] = currentState;
-        return changed;
-    }
+        => Plugin.GameGui.GetAddonByName(name) != nint.Zero;
 
     #endregion
 
@@ -145,6 +123,7 @@ public static unsafe class Addon
             if (name.Equals(addon.Value->NameString))
                 return true;
         }
+
         return false;
     }
 

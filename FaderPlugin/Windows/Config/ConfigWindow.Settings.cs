@@ -303,7 +303,6 @@ public partial class ConfigWindow
         for (var i = 0; i < SelectedConfig.Count; i++)
         {
             var elementState = SelectedConfig[i].state;
-            var elementSetting = SelectedConfig[i].setting;
 
             // State
             var itemWidth = 200.0f * ImGuiHelpers.GlobalScale;
@@ -336,31 +335,29 @@ public partial class ConfigWindow
                         }
                     }
                 }
+
                 ImGui.SameLine();
             }
 
             // Opacity
+            var opacity = SelectedConfig[i].Opacity;
+            ImGui.SameLine();
+            ImGui.SetNextItemWidth(itemWidth);
+            if (ImGui.SliderFloat($"##{elementName}-{i}-opacity", ref opacity, 0.0f, 1.0f, $"{Language.Opacity}: %.2f"))
             {
-                var opacity = SelectedConfig[i].Opacity;
-                ImGui.SameLine();
-                ImGui.SetNextItemWidth(itemWidth);
-                if (ImGui.SliderFloat($"##{elementName}-{i}-opacity", ref opacity, 0.0f, 1.0f, $"{Language.Opacity}: %.2f"))
-                {
-                    SelectedConfig[i].Opacity = opacity;
-                    // If the opacity is increased above 0.05 while the element is disabled, force Show
-                    if (opacity > 0.05f && SelectedConfig[i].setting == Setting.Hide)
-                    {
-                        SelectedConfig[i].setting = Setting.Show;
-                    }
-                    SaveSelectedElementsConfig();
-                }
+                SelectedConfig[i].Opacity = opacity;
+                // If the opacity is increased above 0.05 while the element is disabled, force Show
+                if (opacity > 0.05f && SelectedConfig[i].setting == Setting.Hide)
+                    SelectedConfig[i].setting = Setting.Show;
+
+                SaveSelectedElementsConfig();
             }
 
             // Disable checkbox only if default state & low opacity
             ImGui.SameLine();
             if (SelectedConfig[i].state == State.Default && SelectedConfig[i].Opacity <= 0.05f)
             {
-                var hide = (SelectedConfig[i].setting == Setting.Hide);
+                var hide = SelectedConfig[i].setting == Setting.Hide;
                 if (ImGui.Checkbox($"##{elementName}-{i}-hide", ref hide))
                 {
                     SelectedConfig[i].setting = hide ? Setting.Hide : Setting.Show;
@@ -418,9 +415,8 @@ public partial class ConfigWindow
 
         // Add new condition row
         ImGui.SameLine();
-        using (var font = ImRaii.PushFont(UiBuilder.IconFont))
+        using (ImRaii.PushFont(UiBuilder.IconFont))
         {
-            ;
             if (ImGui.Button($"{FontAwesomeIcon.Plus.ToIconString()}##{elementName}-add"))
             {
                 SelectedConfig.Add(new ConfigEntry(State.None, Setting.Hide));
@@ -431,17 +427,16 @@ public partial class ConfigWindow
                 SaveSelectedElementsConfig();
             }
         }
-        // Warning Label
-        {
-            var defaultEntry = SelectedConfig.FirstOrDefault(e => e.state == State.Default);
-            var defaultDisabled = defaultEntry != null && defaultEntry.setting == Setting.Hide;
-            var hoverPresent = SelectedConfig.Any(e => e.state == State.Hover);
 
-            if (defaultDisabled && hoverPresent)
-            {
-                ImGui.Separator();
-                Helper.TextColored(ImGuiColors.DalamudRed, Language.StateWarning);
-            }
+        // Warning Label
+        var defaultEntry = SelectedConfig.FirstOrDefault(e => e.state == State.Default);
+        var defaultDisabled = defaultEntry != null && defaultEntry.setting == Setting.Hide;
+        var hoverPresent = SelectedConfig.Any(e => e.state == State.Hover);
+
+        if (defaultDisabled && hoverPresent)
+        {
+            ImGui.Separator();
+            Helper.TextColored(ImGuiColors.DalamudRed, Language.StateWarning);
         }
     }
 
@@ -455,7 +450,7 @@ public partial class ConfigWindow
                 .Select(entry => new ConfigEntry(entry.state, entry.setting) { Opacity = entry.Opacity })
                 .ToList();
         }
+
         Configuration.Save();
     }
-
 }

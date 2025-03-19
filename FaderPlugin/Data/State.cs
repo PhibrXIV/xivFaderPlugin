@@ -61,6 +61,7 @@ public static class StateUtil
             State.Mounted => Language.StateMounted,
             State.Combat => Language.StateCombat,
             State.Hover => Language.StateHover,
+            State.Occupied => Language.StateOccupied,
             _ => throw new ArgumentOutOfRangeException(nameof(state), state, null)
         };
     }
@@ -88,6 +89,7 @@ public static class StateUtil
         State.AltKeyFocus,
         State.CtrlKeyFocus,
         State.ShiftKeyFocus,
-        State.Hover
+        State.Hover,
+        State.Occupied,
     ];
 }

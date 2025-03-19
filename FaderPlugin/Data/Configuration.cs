@@ -23,14 +23,14 @@ public class Configuration : IPluginConfiguration
     public event Action? OnSave;
 
     public int Version { get; set; } = 6;
-    public Dictionary<Element, List<ConfigEntry>> elementsConfig { get; set; }
+    public Dictionary<Element, List<ConfigEntry>> elementsConfig { get; set; } = [];
     public bool DefaultDelayEnabled { get; set; } = true;
     public int DefaultDelay { get; set; } = 2000;
     public int ChatActivityTimeout { get; set; } = 5 * 1000;
     public int OverrideKey { get; set; } = 0x12;
-    public bool FocusOnHotbarsUnlock { get; set; } = false;
-    public bool EmoteActivity { get; set; } = false;
-    public bool ImportantActivity { get; set; } = false;
+    public bool FocusOnHotbarsUnlock { get; set; }
+    public bool EmoteActivity { get; set; }
+    public bool ImportantActivity { get; set; }
     public float DefaultAlpha { get; set; } = 1.0f;
     public float EnterTransitionSpeed { get; set; } = 4.0f; // alpha change per frame when fading in
     public float ExitTransitionSpeed { get; set; } = 1.0f; // alpha change per frame when fading out (1.0f = 1 second for full transition)
@@ -57,9 +57,8 @@ public class Configuration : IPluginConfiguration
             {
                 // If the entry is set to Hide and its opacity is above 0.05 (which old configurations will be),
                 // then update it to 0 to keep the configuration working as before.
-                if (entry.setting == Setting.Hide && entry.Opacity > 0.05f)
+                if (entry is { setting: Setting.Hide, Opacity: > 0.05f })
                     entry.Opacity = 0;
-
             }
         }
     }
