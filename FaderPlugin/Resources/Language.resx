@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <root>
   <!-- 
     Microsoft ResX Schema 
@@ -428,6 +428,36 @@ Configuration of the element that was selected first will override the rest.</va
     <value>Warning: Disabled Elements cannot be hovered!</value>
   </data>
   <data name="StateOccupied" xml:space="preserve">
-      <value>Occupied</value>
+    <value>Occupied</value>
+  </data>
+  <data name="TabHoverGroups" xml:space="preserve">
+    <value>Hover Groups</value>
+  </data>
+  <data name="HoverGroupNewGroup" xml:space="preserve">
+    <value>New Group</value>
+  </data>
+  <data name="HoverGroupsAddGroup" xml:space="preserve">
+    <value>Add Group</value>
+  </data>
+  <data name="HoverGroupsElements" xml:space="preserve">
+    <value>Elements in Group</value>
+  </data>
+  <data name="HoverGroupsHint" xml:space="preserve">
+    <value>Select a group to edit its details.</value>
+  </data>
+  <data name="HoverGroupsTutorialBody1" xml:space="preserve">
+    <value>Select an existing group from the left or click 'Add Group' to create a new one.</value>
+  </data>
+  <data name="HoverGroupsTutorialBody2" xml:space="preserve">
+    <value>Assign UI elements to the group using the checkboxes.</value>
+  </data>
+  <data name="HoverGroupsTutorialBody3" xml:space="preserve">
+    <value>When you hover over any element that is part of the group, all elements </value>
+  </data>
+  <data name="HoverGroupsTutorialBody4" xml:space="preserve">
+    <value>in it will have their hover state activated.</value>
+  </data>
+  <data name="HoverGroupsTutorialHeader" xml:space="preserve">
+    <value>How to Use:</value>
   </data>
 </root>
