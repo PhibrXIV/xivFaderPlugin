@@ -117,7 +117,7 @@ public static unsafe class Addon
     {
         foreach (var addon in Stage->RaptureAtkUnitManager->AtkUnitManager.FocusedUnitsList.Entries)
         {
-            if (addon.Value == null || addon.Value->Name == null)
+            if (addon.Value == null || addon.Value->Name.IsEmpty)
                 continue;
 
             if (name.Equals(addon.Value->NameString))
@@ -132,7 +132,7 @@ public static unsafe class Addon
     #region Mouse / Movement Checks
 
     public static bool IsMoving()
-        => AgentMap.Instance()->IsPlayerMoving != 0;
+        => AgentMap.Instance()->IsPlayerMoving;
 
 
     public static bool AreHotbarsLocked()
