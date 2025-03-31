@@ -435,8 +435,66 @@ public partial class ConfigWindow
 
         if (defaultDisabled && hoverPresent)
         {
-            ImGui.Separator();
             Helper.TextColored(ImGuiColors.DalamudRed, Language.StateWarning);
+        }
+        else
+        {   // spacing & prevents Layout shift when the warning appears
+            ImGui.NewLine();
+        }
+        // Fade Setting Overrides
+        using var overrideTable = ImRaii.Table("FadeOverrideTable", 2, ImGuiTableFlags.SizingFixedFit | ImGuiTableFlags.NoSavedSettings);
+        if (overrideTable.Success)
+        {
+            ImGui.TableSetupColumn("Label", ImGuiTableColumnFlags.WidthFixed, 200.0f * ImGuiHelpers.GlobalScale);
+            ImGui.TableSetupColumn("Controls", ImGuiTableColumnFlags.WidthFixed, 200.0f * ImGuiHelpers.GlobalScale);
+            ImGui.TableNextRow();
+            ImGui.TableNextColumn();
+            ImGui.TextUnformatted(Language.SettingsFadeOverride);
+            ImGui.SameLine();
+            var useOverride = Configuration.FadeOverrides[selectedElement].UseCustomFadeTimes;
+            if (ImGui.Checkbox($"##{elementName}-fadeOverride", ref useOverride))
+            {
+                Configuration.FadeOverrides[selectedElement].UseCustomFadeTimes = useOverride;
+                Configuration.Save();
+            }
+            ImGui.TableNextColumn();
+            if (useOverride)
+            {
+                ImGui.TableNextRow();
+                ImGui.TableNextColumn();
+                ImGui.TextUnformatted(Language.SettingsEnterTransition);
+                ImGuiComponents.HelpMarker(Language.SettingsEnterTransitionTooltip);
+                ImGui.TableNextColumn();
+
+                var itemWidth = 200.0f * ImGuiHelpers.GlobalScale;
+                ImGui.SetNextItemWidth(itemWidth);
+                var fadeInTime = Configuration.FadeOverrides[selectedElement].EnterTransitionSpeedOverride > 0.0001f
+                    ? (1.0f / Configuration.FadeOverrides[selectedElement].EnterTransitionSpeedOverride) * 1000.0f
+                    : 1000.0f;
+                if (ImGui.SliderFloat($"##{elementName}-fadeIn", ref fadeInTime, 10.0f, 2000.0f, "%.0f ms"))
+                {
+                    fadeInTime = (float)Math.Round(fadeInTime / 10.0f) * 10.0f;
+                    Configuration.FadeOverrides[selectedElement].EnterTransitionSpeedOverride = 1000.0f / fadeInTime;
+                    Configuration.Save();
+                }
+
+                ImGui.TableNextRow();
+                ImGui.TableNextColumn();
+                ImGui.TextUnformatted(Language.SettingsExitTransition);
+                ImGuiComponents.HelpMarker(Language.SettingsExitTransitionTooltip);
+                ImGui.TableNextColumn();
+
+                ImGui.SetNextItemWidth(itemWidth);
+                var fadeOutTime = Configuration.FadeOverrides[selectedElement].ExitTransitionSpeedOverride > 0.0001f
+                    ? (1.0f / Configuration.FadeOverrides[selectedElement].ExitTransitionSpeedOverride) * 1000.0f
+                    : 1000.0f;
+                if (ImGui.SliderFloat($"##{elementName}-fadeOut", ref fadeOutTime, 10.0f, 2000.0f, "%.0f ms"))
+                {
+                    fadeOutTime = (float)Math.Round(fadeOutTime / 10.0f) * 10.0f;
+                    Configuration.FadeOverrides[selectedElement].ExitTransitionSpeedOverride = 1000.0f / fadeOutTime;
+                    Configuration.Save();
+                }
+            }
         }
     }
 

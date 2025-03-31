@@ -400,9 +400,20 @@ public class Plugin : IDalamudPlugin
                 FinishingHover[addonName] = false;
             }
 
-            var transitionSpeed = (targetAlpha > currentAlpha)
-                ? Config.EnterTransitionSpeed
-                : Config.ExitTransitionSpeed;
+            float transitionSpeed;
+            if (Config.FadeOverrides.TryGetValue(element, out var fadeOverride) && fadeOverride.UseCustomFadeTimes)
+            {
+                transitionSpeed = (targetAlpha > currentAlpha)
+                    ? fadeOverride.EnterTransitionSpeedOverride
+                    : fadeOverride.ExitTransitionSpeedOverride;
+            }
+            else
+            {
+                transitionSpeed = (targetAlpha > currentAlpha)
+                    ? Config.EnterTransitionSpeed
+                    : Config.ExitTransitionSpeed;
+            }
+
 
             currentAlpha = MoveTowards(currentAlpha, targetAlpha, transitionSpeed * (float)Framework.UpdateDelta.TotalSeconds);
             CurrentAlphas[addonName] = currentAlpha;

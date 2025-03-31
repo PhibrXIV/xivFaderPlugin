@@ -1,4 +1,5 @@
 using Dalamud.Configuration;
+using faderPlugin.Data;
 using System;
 using System.Collections.Generic;
 
@@ -24,6 +25,7 @@ public class Configuration : IPluginConfiguration
 
     public int Version { get; set; } = 6;
     public Dictionary<Element, List<ConfigEntry>> elementsConfig { get; set; } = [];
+    public Dictionary<Element, FadeOverride> FadeOverrides { get; set; } = [];
     public List<HoverGroup> HoverGroups { get; set; } = [];
     public bool DefaultDelayEnabled { get; set; } = true;
     public int DefaultDelay { get; set; } = 2000;
@@ -39,11 +41,14 @@ public class Configuration : IPluginConfiguration
     public void Initialize()
     {
         // Initialise the config.
-        elementsConfig ??= new Dictionary<Element, List<ConfigEntry>>();
+        elementsConfig ??= [];
+        FadeOverrides ??= [];
         foreach (var element in Enum.GetValues<Element>())
         {
             if (!elementsConfig.ContainsKey(element))
                 elementsConfig[element] = [new ConfigEntry(State.Default, Setting.Show)];
+            if (!FadeOverrides.ContainsKey(element))
+                FadeOverrides[element] = new FadeOverride();
         }
         FixLegacyConfig();
         Save();
