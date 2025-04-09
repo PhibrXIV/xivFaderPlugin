@@ -198,6 +198,18 @@ public class Plugin : IDalamudPlugin
         UpdateInputStates();
         UpdateMouseHoverState();
 
+        var forceShow = !Enabled || Addon.IsHudManagerOpen();
+
+        if (forceShow)
+        {
+            foreach (var addonName in AddonNameToElement.Keys)
+            {
+                Addon.SetAddonVisibility(addonName, true);
+                FinishingHover[addonName] = false;
+            }
+            return;
+        }
+
         if (StateChanged || ConfigChanged || !DoAlphasMatch() || AnyDelayExpired())
         {
             UpdateAddonOpacity();
@@ -301,21 +313,6 @@ public class Plugin : IDalamudPlugin
 
     private void UpdateAddonOpacity()
     {
-        if (!IsSafeToWork())
-            return;
-
-        var forceShow = !Enabled || Addon.IsHudManagerOpen();
-
-        if (forceShow)
-        {
-            foreach (var addonName in AddonNameToElement.Keys)
-            {
-                Addon.SetAddonVisibility(addonName, true);
-                FinishingHover[addonName] = false;
-            }
-            return;
-        }
-
         // If delay is disabled, clear any stored delay state.
         if (!Config.DefaultDelayEnabled)
         {
