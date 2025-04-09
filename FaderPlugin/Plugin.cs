@@ -371,10 +371,8 @@ public class Plugin : IDalamudPlugin
             var isHovered = AddonHoverStates.TryGetValue(addonName, out var hovered) && hovered;
 
             var candidate = GetCandidateConfig(addonName, elementConfig, isHovered);
-            var effectiveSetting = GetEffectiveSetting(candidate);
-
             var currentAlpha = CurrentAlphas.TryGetValue(addonName, out var alpha) ? alpha : Config.DefaultAlpha;
-            var targetAlpha = CalculateTargetAlpha(candidate, effectiveSetting, isHovered, currentAlpha);
+            var targetAlpha = CalculateTargetAlpha(candidate, isHovered, currentAlpha);
 
             TargetAlphas[addonName] = targetAlpha;
 
@@ -418,10 +416,12 @@ public class Plugin : IDalamudPlugin
             currentAlpha = MoveTowards(currentAlpha, targetAlpha, transitionSpeed * (float)Framework.UpdateDelta.TotalSeconds);
             CurrentAlphas[addonName] = currentAlpha;
             Addon.SetAddonOpacity(addonName, currentAlpha);
-
-            var defaultDisabled = (candidate.state == State.Default && candidate.setting == Setting.Hide);
-            var hidden = defaultDisabled && currentAlpha < 0.05f;
-            Addon.SetAddonVisibility(addonName, !hidden);
+            // hijacking default state as the global store for hide/show since opacity values make individual show/hide states obsolete
+            var defaultEntry = elementConfig.FirstOrDefault(entry => entry.state == State.Default);
+            var defaultHiddenChecked = defaultEntry != null && defaultEntry.setting == Setting.Hide;
+            // if the disable Element checkbox is activated and a state has an opacity lower than 0.05, the addon is hidden
+            var shouldHide = defaultHiddenChecked && currentAlpha < 0.05f;
+            Addon.SetAddonVisibility(addonName, !shouldHide);
         }
     }
 
@@ -443,12 +443,6 @@ public class Plugin : IDalamudPlugin
             // Record the non-default state with a timestamp.
             DelayTimers[addonName] = now;
             LastNonDefaultEntry[addonName] = candidate;
-
-            // Force non-default states to Show.
-            if (candidate.setting == Setting.Hide)
-            {
-                candidate.setting = Setting.Show;
-            }
         }
         else if (candidate != null && candidate.state == State.Default && Config.DefaultDelayEnabled)
         {
@@ -480,13 +474,13 @@ public class Plugin : IDalamudPlugin
         return candidate.setting;
     }
 
-    private static float CalculateTargetAlpha(ConfigEntry candidate, Setting effectiveSetting, bool isHovered, float currentAlpha)
+    private static float CalculateTargetAlpha(ConfigEntry candidate, bool isHovered, float currentAlpha)
     {
         if (candidate.state == State.Hover)
         {
             return isHovered ? candidate.Opacity : currentAlpha;
         }
-        return (effectiveSetting == Setting.Show) ? candidate.Opacity : 0.0f;
+        return candidate.Opacity;
     }
 
     /// <summary>
