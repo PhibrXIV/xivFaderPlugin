@@ -367,6 +367,7 @@ public class Plugin : IDalamudPlugin
             // hijacking default state as the global store for hide/show since opacity values make individual show/hide states obsolete
             var defaultEntry = elementConfig.FirstOrDefault(entry => entry.state == State.Default);
             var defaultHiddenChecked = defaultEntry != null && defaultEntry.setting == Setting.Hide;
+            // if the disable Element checkbox is activated and a state has an opacity lower than 0.05, the addon is hidden
             var shouldHide = defaultHiddenChecked && currentAlpha < 0.05f;
             Addon.SetAddonVisibility(addonName, !shouldHide);
         }

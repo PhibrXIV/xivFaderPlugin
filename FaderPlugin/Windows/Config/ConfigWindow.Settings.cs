@@ -349,6 +349,7 @@ public partial class ConfigWindow
                 SaveSelectedElementsConfig();
             }
 
+            // Default Disabled Checkbox
             ImGui.SameLine();
             if (SelectedConfig[i].state == State.Default)
             {
