@@ -53,7 +53,6 @@ public static class Helper
         var sliderValue = (int)((value - min) / step);
 
         var valueChanged = false;
-        ImRaii.PushId(label);
         ImGui.SetNextItemWidth(itemWidth);
 
         // Create an integer slider with an empty format to hide the built-in display.
