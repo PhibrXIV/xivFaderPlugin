@@ -6,6 +6,7 @@ using faderPlugin.Resources;
 using FaderPlugin.Data;
 using ImGuiNET;
 using System;
+using System.Linq;
 using System.Numerics;
 
 namespace FaderPlugin.Windows.Config;
@@ -51,6 +52,25 @@ public partial class ConfigWindow
                     {
                         SelectedHoverGroupIndex = i;
                     }
+                    if (ImGui.IsItemHovered())
+                    {
+                        var addonNames = group.Elements.SelectMany(element => ElementUtil.GetAddonName(element)).ToArray();
+                        if (addonNames.Length == 0)
+                            continue;
+
+                        var color = ImGui.GetColorU32(ImGuiColors.HealerGreen);
+                        var drawlist = ImGui.GetBackgroundDrawList();
+
+                        foreach (var addonName in addonNames)
+                        {
+                            var addonPosition = Addon.GetAddonPosition(addonName);
+                            if (!addonPosition.IsPresent)
+                                continue;
+
+                            drawlist.AddRect(addonPosition.Start, addonPosition.End, color, 0, ImDrawFlags.None, 5.0f * ImGuiHelpers.GlobalScale);
+                        }
+                    }
+
                 }
             }
             if (ImGui.Button(Language.HoverGroupsAddGroup))
