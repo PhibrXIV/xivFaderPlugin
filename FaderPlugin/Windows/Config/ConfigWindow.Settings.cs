@@ -171,13 +171,11 @@ public partial class ConfigWindow
                 var enterTransitionTimeMs = Configuration.EnterTransitionSpeed > 0.0001f
                     ? (1.0f / Configuration.EnterTransitionSpeed) * 1000.0f
                     : 1000.0f;
-                if (ImGui.SliderFloat("##enter_transition_time_ms", ref enterTransitionTimeMs, 10.0f, 2000.0f, "%.0f ms"))
+                if (Helper.SliderFloatDiscrete("##enter_transition_time_ms", ref enterTransitionTimeMs, 10.0f, 2000.0f, 10.0f, "{0:0} ms"))
                 {
-                    enterTransitionTimeMs = (float)Math.Round(enterTransitionTimeMs / 10.0f) * 10.0f;
                     Configuration.EnterTransitionSpeed = 1000.0f / enterTransitionTimeMs;
                     Configuration.Save();
                 }
-
                 //
                 // Exit Transition Time
                 //
@@ -191,9 +189,8 @@ public partial class ConfigWindow
                 var exitTransitionTimeMs = Configuration.ExitTransitionSpeed > 0.0001f
                     ? (1.0f / Configuration.ExitTransitionSpeed) * 1000.0f
                     : 1000.0f;
-                if (ImGui.SliderFloat("##exit_transition_time_ms", ref exitTransitionTimeMs, 10.0f, 2000.0f, "%.0f ms"))
+                if (Helper.SliderFloatDiscrete("##exit_transition_time_ms", ref exitTransitionTimeMs, 10.0f, 2000.0f, 10.0f, "{0:0} ms"))
                 {
-                    exitTransitionTimeMs = (float)Math.Round(exitTransitionTimeMs / 10.0f) * 10.0f;
                     Configuration.ExitTransitionSpeed = 1000.0f / exitTransitionTimeMs;
                     Configuration.Save();
                 }
@@ -467,9 +464,8 @@ public partial class ConfigWindow
                 var fadeInTime = Configuration.FadeOverrides[selectedElement].EnterTransitionSpeedOverride > 0.0001f
                     ? (1.0f / Configuration.FadeOverrides[selectedElement].EnterTransitionSpeedOverride) * 1000.0f
                     : 1000.0f;
-                if (ImGui.SliderFloat($"##{elementName}-fadeIn", ref fadeInTime, 10.0f, 2000.0f, "%.0f ms"))
+                if (Helper.SliderFloatDiscrete($"##{elementName}-fadeIn", ref fadeInTime, 10.0f, 2000.0f, 10.0f, "{0:0} ms"))
                 {
-                    fadeInTime = (float)Math.Round(fadeInTime / 10.0f) * 10.0f;
                     Configuration.FadeOverrides[selectedElement].EnterTransitionSpeedOverride = 1000.0f / fadeInTime;
                     Configuration.Save();
                 }
@@ -484,9 +480,8 @@ public partial class ConfigWindow
                 var fadeOutTime = Configuration.FadeOverrides[selectedElement].ExitTransitionSpeedOverride > 0.0001f
                     ? (1.0f / Configuration.FadeOverrides[selectedElement].ExitTransitionSpeedOverride) * 1000.0f
                     : 1000.0f;
-                if (ImGui.SliderFloat($"##{elementName}-fadeOut", ref fadeOutTime, 10.0f, 2000.0f, "%.0f ms"))
+                if (Helper.SliderFloatDiscrete($"##{elementName}-fadeOut", ref fadeOutTime, 10.0f, 2000.0f, 10.0f, "{0:0} ms"))
                 {
-                    fadeOutTime = (float)Math.Round(fadeOutTime / 10.0f) * 10.0f;
                     Configuration.FadeOverrides[selectedElement].ExitTransitionSpeedOverride = 1000.0f / fadeOutTime;
                     Configuration.Save();
                 }
