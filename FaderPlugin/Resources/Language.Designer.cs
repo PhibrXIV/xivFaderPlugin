@@ -736,6 +736,15 @@ namespace faderPlugin.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Override Fade Settings.
+        /// </summary>
+        internal static string SettingsFadeOverride {
+            get {
+                return ResourceManager.GetString("SettingsFadeOverride", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Always User Focus when hotbars are unlocked.
         /// </summary>
         internal static string SettingsFocusHotbarUnlock {

@@ -460,6 +460,9 @@ Configuration of the element that was selected first will override the rest.</va
   <data name="HoverGroupsTutorialHeader" xml:space="preserve">
     <value>How to Use:</value>
   </data>
+  <data name="SettingsFadeOverride" xml:space="preserve">
+    <value>Override Fade Settings</value>
+  </data>
   <data name="StateLeftBumper" xml:space="preserve">
     <value>Left Bumper Held</value>
   </data>
