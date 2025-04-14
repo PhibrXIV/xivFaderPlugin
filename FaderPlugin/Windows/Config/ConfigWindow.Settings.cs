@@ -346,16 +346,12 @@ public partial class ConfigWindow
             if (ImGui.SliderFloat($"##{elementName}-{i}-opacity", ref opacity, 0.0f, 1.0f, $"{Language.Opacity}: %.2f"))
             {
                 SelectedConfig[i].Opacity = opacity;
-                // If the opacity is increased above 0.05 while the element is disabled, force Show
-                if (opacity > 0.05f && SelectedConfig[i].setting == Setting.Hide)
-                    SelectedConfig[i].setting = Setting.Show;
-
                 SaveSelectedElementsConfig();
             }
 
-            // Disable checkbox only if default state & low opacity
+            // Default Disabled Checkbox
             ImGui.SameLine();
-            if (SelectedConfig[i].state == State.Default && SelectedConfig[i].Opacity <= 0.05f)
+            if (SelectedConfig[i].state == State.Default)
             {
                 var hide = SelectedConfig[i].setting == Setting.Hide;
                 if (ImGui.Checkbox($"##{elementName}-{i}-hide", ref hide))

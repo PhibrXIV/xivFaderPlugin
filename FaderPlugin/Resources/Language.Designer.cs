@@ -673,7 +673,7 @@ namespace faderPlugin.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Fully disables element at low opacity. Unchecked means the element remains interactable even when fully invisible..
+        ///   Looks up a localized string similar to Fully disables the element when the opacity of a state goes below 0.05..
         /// </summary>
         internal static string SettingsDisableTooltip {
             get {

@@ -410,7 +410,7 @@ Configuration of the element that was selected first will override the rest.</va
     <value>Disable Element</value>
   </data>
   <data name="SettingsDisableTooltip" xml:space="preserve">
-    <value>Fully disables element at low opacity. Unchecked means the element remains interactable even when fully invisible.</value>
+    <value>Fully disables the element when the opacity of a state goes below 0.05.</value>
   </data>
   <data name="SettingsEnterTransition" xml:space="preserve">
     <value>Fade In time:</value>
