@@ -258,6 +258,46 @@ public class Plugin : IDalamudPlugin
     }
 
     /// <summary>
+    /// For each hover group defined in configuration, if any addon in that group is hovered,
+    /// mark all addons in the group as hovered.
+    /// </summary>
+    private void ApplyHoverGroups()
+    {
+        var originalHoverStates = new Dictionary<string, bool>(AddonHoverStates);
+        var finalHoverStates = new Dictionary<string, bool>(originalHoverStates);
+
+        foreach (var group in Config.HoverGroups)
+        {
+            var groupAddonNames = AddonNameToElement
+                .Where(kvp => group.Elements.Contains(kvp.Value))
+                .Select(kvp => kvp.Key)
+                .ToList();
+
+            if (groupAddonNames.Count == 0)
+                continue;
+
+            var groupActivated = groupAddonNames.Any(addonName =>
+                originalHoverStates.TryGetValue(addonName, out var hovered) && hovered);
+
+            if (groupActivated)
+            {
+                // Only update final states based on the activation of this group.
+                // This is to prevent cascading hover states, where multiple groups have overlapping addons.
+                foreach (var addonName in groupAddonNames)
+                {
+                    finalHoverStates[addonName] = true;
+                }
+            }
+        }
+
+        // Update the global hover states with our computed final states.
+        foreach (var kvp in finalHoverStates)
+        {
+            AddonHoverStates[kvp.Key] = kvp.Value;
+        }
+    }
+
+    /// <summary>
     /// Collects all addon hover states
     /// </summary>
     private void UpdateHoverStates()
@@ -270,6 +310,7 @@ public class Plugin : IDalamudPlugin
             // Compute the hover state once per addon.
             AddonHoverStates[addonName] = IsAddonHovered(addonName, mousePos);
         }
+        ApplyHoverGroups();
     }
 
 

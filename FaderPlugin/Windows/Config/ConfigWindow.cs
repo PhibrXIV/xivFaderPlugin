@@ -32,7 +32,7 @@ public partial class ConfigWindow : Window, IDisposable
             return;
 
         Settings();
-
+        HoverGroups();
         About();
     }
 }

@@ -18,6 +18,13 @@ public static class Helper
             ImGui.TextUnformatted(text);
     }
 
+    public static void BulletText(string text)
+    {
+        ImGui.Bullet();
+        ImGui.SameLine();
+        ImGui.TextUnformatted(text);
+    }
+
     public static void Tooltip(string tooltip)
     {
         using (ImRaii.Tooltip())

@@ -24,6 +24,7 @@ public class Configuration : IPluginConfiguration
 
     public int Version { get; set; } = 6;
     public Dictionary<Element, List<ConfigEntry>> elementsConfig { get; set; } = [];
+    public List<HoverGroup> HoverGroups { get; set; } = [];
     public bool DefaultDelayEnabled { get; set; } = true;
     public int DefaultDelay { get; set; } = 2000;
     public int ChatActivityTimeout { get; set; } = 5 * 1000;
@@ -31,10 +32,9 @@ public class Configuration : IPluginConfiguration
     public bool FocusOnHotbarsUnlock { get; set; }
     public bool EmoteActivity { get; set; }
     public bool ImportantActivity { get; set; }
-    public float DefaultAlpha { get; set; } = 1.0f;
-    public float EnterTransitionSpeed { get; set; } = 4.0f; // alpha change per frame when fading in
+    public float DefaultAlpha { get; set; } = 1.0f; // 1.0f = fully opaque, 0.0f = fully transparent
+    public float EnterTransitionSpeed { get; set; } = 4.0f; // alpha change per frame when fading in (4.0f = 250ms for full transition)
     public float ExitTransitionSpeed { get; set; } = 1.0f; // alpha change per frame when fading out (1.0f = 1 second for full transition)
-
 
     public void Initialize()
     {
