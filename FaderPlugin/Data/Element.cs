@@ -1,4 +1,4 @@
-﻿using faderPlugin.Resources;
+using faderPlugin.Resources;
 using System;
 
 namespace FaderPlugin.Data;
@@ -44,6 +44,7 @@ public enum Element
     StatusEnhancements,
     StatusEnfeeblements,
     StatusOther,
+    StatusConditional,
 }
 
 public static class ElementUtil
@@ -79,6 +80,7 @@ public static class ElementUtil
             Element.StatusEnhancements => Language.ElementStatusEnhancements,
             Element.StatusEnfeeblements => Language.ElementStatusEnfeeblements,
             Element.StatusOther => Language.ElementStatusOther,
+            Element.StatusConditional => Language.ElementStatusConditional,
             Element.Unknown => Language.ElementUnknown,
             Element.Job => Language.ElementJob,
             Element.Currency => Language.ElementCurrency,
@@ -145,6 +147,7 @@ public static class ElementUtil
             Element.StatusEnhancements => ["_StatusCustom0"],
             Element.StatusEnfeeblements => ["_StatusCustom1"],
             Element.StatusOther => ["_StatusCustom2"],
+            Element.StatusConditional => ["_StatusCustom3"],
             Element.CastBar => ["_CastBar"],
             Element.ExperienceBar => ["_Exp"],
             Element.ScenarioGuide => ["ScenarioTree"],
@@ -188,6 +191,7 @@ public static class ElementUtil
             Element.StatusEnfeeblements => Language.ElementTooltipStatusEnfeeblements,
             Element.StatusEnhancements => Language.ElementTooltipStatusEnhancements,
             Element.StatusOther => Language.ElementTooltipStatusOther,
+            Element.StatusConditional => Language.ElementTooltipStatusConditional,
             _ => string.Empty,
         };
     }
