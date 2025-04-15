@@ -460,6 +460,9 @@ Configuration of the element that was selected first will override the rest.</va
   <data name="HoverGroupsTutorialHeader" xml:space="preserve">
     <value>How to Use:</value>
   </data>
+  <data name="SettingsFadeOverride" xml:space="preserve">
+    <value>Override Fade Settings</value>
+  </data>
   <data name="StateLeftBumper" xml:space="preserve">
     <value>Left Bumper Held</value>
   </data>
@@ -471,5 +474,11 @@ Configuration of the element that was selected first will override the rest.</va
   </data>
   <data name="StateRightTrigger" xml:space="preserve">
     <value>Right Trigger Held</value>
+  </data>
+  <data name="ElementStatusConditional" xml:space="preserve">
+    <value>Status Conditional</value>
+  </data>
+  <data name="ElementTooltipStatusConditional" xml:space="preserve">
+    <value>Player conditional status (when split into 4 separate elements)</value>
   </data>
 </root>

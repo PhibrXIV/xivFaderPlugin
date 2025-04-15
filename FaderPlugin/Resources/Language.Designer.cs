@@ -403,6 +403,15 @@ namespace faderPlugin.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Status Conditional.
+        /// </summary>
+        internal static string ElementStatusConditional {
+            get {
+                return ResourceManager.GetString("ElementStatusConditional", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Status Enfeeblements.
         /// </summary>
         internal static string ElementStatusEnfeeblements {
@@ -489,6 +498,15 @@ namespace faderPlugin.Resources {
         internal static string ElementTooltipStatus {
             get {
                 return ResourceManager.GetString("ElementTooltipStatus", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Player conditional status (when split into 4 separate elements).
+        /// </summary>
+        internal static string ElementTooltipStatusConditional {
+            get {
+                return ResourceManager.GetString("ElementTooltipStatusConditional", resourceCulture);
             }
         }
         
@@ -736,6 +754,15 @@ namespace faderPlugin.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Override Fade Settings.
+        /// </summary>
+        internal static string SettingsFadeOverride {
+            get {
+                return ResourceManager.GetString("SettingsFadeOverride", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Always User Focus when hotbars are unlocked.
         /// </summary>
         internal static string SettingsFocusHotbarUnlock {
@@ -979,7 +1006,6 @@ namespace faderPlugin.Resources {
             }
         }
         
-        
         /// <summary>
         ///   Looks up a localized string similar to Left Bumper Held.
         /// </summary>
@@ -1060,7 +1086,7 @@ namespace faderPlugin.Resources {
                 return ResourceManager.GetString("StateRightTrigger", resourceCulture);
             }
         }
-                
+        
         /// <summary>
         ///   Looks up a localized string similar to SHIFT Key Focus.
         /// </summary>
