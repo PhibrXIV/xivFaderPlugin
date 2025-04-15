@@ -25,6 +25,7 @@ public class Configuration : IPluginConfiguration
 
     public int Version { get; set; } = 6;
     public Dictionary<Element, List<ConfigEntry>> elementsConfig { get; set; } = [];
+    public Dictionary<Element, bool> DisabledElements { get; set; } = [];
     public Dictionary<Element, FadeOverride> FadeOverrides { get; set; } = [];
     public List<HoverGroup> HoverGroups { get; set; } = [];
     public bool DefaultDelayEnabled { get; set; } = true;
@@ -43,12 +44,15 @@ public class Configuration : IPluginConfiguration
         // Initialise the config.
         elementsConfig ??= [];
         FadeOverrides ??= [];
+        DisabledElements ??= [];
         foreach (var element in Enum.GetValues<Element>())
         {
             if (!elementsConfig.ContainsKey(element))
                 elementsConfig[element] = [new ConfigEntry(State.Default, Setting.Show)];
             if (!FadeOverrides.ContainsKey(element))
                 FadeOverrides[element] = new FadeOverride();
+            if (!DisabledElements.ContainsKey(element))
+                DisabledElements[element] = false;
         }
         FixLegacyConfig();
         Save();
@@ -56,14 +60,24 @@ public class Configuration : IPluginConfiguration
 
     public void FixLegacyConfig()
     {
-        foreach (var entries in elementsConfig.Values)
+        foreach (var kvp in elementsConfig)
         {
+            var element = kvp.Key;
+            var entries = kvp.Value;
+
             foreach (var entry in entries)
             {
-                // If the entry is set to Hide and its opacity is above 0.05 (which old configurations will be),
-                // then update it to 0 to keep the configuration working as before.
-                if (entry is { setting: Setting.Hide, Opacity: > 0.05f })
+                // If the entry is set to Hide
+                // then update the opacity to 0 to keep the configuration working as before.
+                // also set it as disabled, so that old behaviour is used.
+                if (entry is { setting: Setting.Hide })
+                {
+                    DisabledElements[element] = true;
+
+                    // adjust opacity once and set all settings to show so that this won't trigger again
                     entry.Opacity = 0;
+                    entry.setting = Setting.Show;
+                }
             }
         }
     }
