@@ -37,7 +37,7 @@ public class Plugin : IDalamudPlugin
     [PluginService] public static ITargetManager TargetManager { get; set; } = null!;
     [PluginService] public static IDataManager Data { get; private set; } = null!;
     [PluginService] public static IGamepadState GamepadState { get; private set; } = null!;
-    
+
     // Configuration and windows.
     public readonly Configuration Config;
     private readonly WindowSystem WindowSystem = new("Fader");
@@ -408,11 +408,9 @@ public class Plugin : IDalamudPlugin
             currentAlpha = MoveTowards(currentAlpha, targetAlpha, transitionSpeed * (float)Framework.UpdateDelta.TotalSeconds);
             CurrentAlphas[addonName] = currentAlpha;
             Addon.SetAddonOpacity(addonName, currentAlpha);
-            // hijacking default state as the global store for hide/show since opacity values make individual show/hide states obsolete
-            var defaultEntry = elementConfig.FirstOrDefault(entry => entry.state == State.Default);
-            var defaultHiddenChecked = defaultEntry != null && defaultEntry.setting == Setting.Hide;
-            // if the disable Element checkbox is activated and a state has an opacity lower than 0.05, the addon is hidden
-            var shouldHide = defaultHiddenChecked && currentAlpha < 0.05f;
+
+            var isElementDisabled = Config.DisabledElements.TryGetValue(element, out var disabled) && disabled;
+            var shouldHide = isElementDisabled && currentAlpha < 0.05f;
             Addon.SetAddonVisibility(addonName, !shouldHide);
         }
     }
@@ -456,14 +454,6 @@ public class Plugin : IDalamudPlugin
         }
 
         return candidate!;
-    }
-
-
-    private Setting GetEffectiveSetting(ConfigEntry candidate)
-    {
-        if (!Enabled || Addon.IsHudManagerOpen())
-            return Setting.Show;
-        return candidate.setting;
     }
 
     private static float CalculateTargetAlpha(ConfigEntry candidate, bool isHovered, float currentAlpha)

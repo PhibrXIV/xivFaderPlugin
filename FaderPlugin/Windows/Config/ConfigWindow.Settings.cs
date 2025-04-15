@@ -353,10 +353,13 @@ public partial class ConfigWindow
             ImGui.SameLine();
             if (SelectedConfig[i].state == State.Default)
             {
-                var hide = SelectedConfig[i].setting == Setting.Hide;
-                if (ImGui.Checkbox($"##{elementName}-{i}-hide", ref hide))
+                var isDisabled = Configuration.DisabledElements.TryGetValue(selectedElement, out var disabled) && disabled;
+                if (ImGui.Checkbox($"##{elementName}-disabled", ref isDisabled))
                 {
-                    SelectedConfig[i].setting = hide ? Setting.Hide : Setting.Show;
+                    foreach (var element in SelectedElements)
+                    {
+                        Configuration.DisabledElements[element] = isDisabled;
+                    }
                     SaveSelectedElementsConfig();
                 }
                 ImGui.SameLine();
@@ -415,7 +418,7 @@ public partial class ConfigWindow
         {
             if (ImGui.Button($"{FontAwesomeIcon.Plus.ToIconString()}##{elementName}-add"))
             {
-                SelectedConfig.Add(new ConfigEntry(State.None, Setting.Hide));
+                SelectedConfig.Add(new ConfigEntry(State.None, Setting.Show));
                 var swap1 = SelectedConfig[^1];
                 var swap2 = SelectedConfig[^2];
                 SelectedConfig[^2] = swap1;
@@ -425,8 +428,7 @@ public partial class ConfigWindow
         }
 
         // Warning Label
-        var defaultEntry = SelectedConfig.FirstOrDefault(e => e.state == State.Default);
-        var defaultDisabled = defaultEntry != null && defaultEntry.setting == Setting.Hide;
+        var defaultDisabled = Configuration.DisabledElements.TryGetValue(selectedElement, out var isElementDisabled) && isElementDisabled;
         var hoverPresent = SelectedConfig.Any(e => e.state == State.Hover);
 
         if (defaultDisabled && hoverPresent)
@@ -445,6 +447,9 @@ public partial class ConfigWindow
             Configuration.elementsConfig[element] = SelectedConfig
                 .Select(entry => new ConfigEntry(entry.state, entry.setting) { Opacity = entry.Opacity })
                 .ToList();
+
+            var elementDisabled = Configuration.DisabledElements.TryGetValue(SelectedElements[0], out var disabled) && disabled;
+            Configuration.DisabledElements[element] = elementDisabled;
         }
 
         Configuration.Save();
