@@ -84,6 +84,7 @@ public static class StateUtil
         State.EnemyTarget,
         State.PlayerTarget,
         State.NPCTarget,
+        State.GatheringNodeTarget,
         State.Crafting,
         State.Gathering,
         State.IsMoving,
@@ -105,6 +106,5 @@ public static class StateUtil
         State.RightTrigger,
         State.LeftBumper,
         State.RightBumper,
-        State.GatheringNodeTarget,
     ];
 }
