@@ -202,6 +202,9 @@ public class Plugin : IDalamudPlugin
         {
             foreach (var addonName in AddonNameToElement.Keys)
             {
+                // TODO: Grab HudLayout opacity settings and apply them here once.
+                // Currently you need to swap hudlayouts or do something that causes the game itself to rerender hud elements
+                // in order to get default in-game opacity values again
                 Addon.SetAddonVisibility(addonName, true);
                 FinishingHover[addonName] = false;
             }
