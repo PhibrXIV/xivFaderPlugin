@@ -196,15 +196,6 @@ public class Plugin : IDalamudPlugin
         if (!IsSafeToWork())
             return;
 
-        StateChanged = false;
-        UpdateInputStates();
-        UpdateMouseHoverState();
-
-        if (StateChanged || ConfigChanged || !DoAlphasMatch() || AnyDelayExpired())
-        {
-            UpdateAddonOpacity();
-            ConfigChanged = false;
-        }
         var forceShow = !Enabled || Addon.IsHudManagerOpen();
 
         if (forceShow)
@@ -216,6 +207,17 @@ public class Plugin : IDalamudPlugin
             }
             return;
         }
+
+        StateChanged = false;
+        UpdateInputStates();
+        UpdateMouseHoverState();
+
+        if (StateChanged || ConfigChanged || !DoAlphasMatch() || AnyDelayExpired())
+        {
+            UpdateAddonOpacity();
+            ConfigChanged = false;
+        }
+        
     }
 
     #region Input & State Management
