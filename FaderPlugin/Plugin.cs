@@ -51,7 +51,7 @@ public class Plugin : IDalamudPlugin
     private HashSet<string> PreviousHoveredAddons = [];
     private readonly Dictionary<string, Element> AddonNameToElement = [];
     private bool ConfigChanged;
-
+    private bool HudManagerPrevOpened = false;
 
     // Opacity Management
     private readonly Dictionary<string, float> CurrentAlphas = [];
@@ -118,9 +118,8 @@ public class Plugin : IDalamudPlugin
 
     public void Dispose()
     {
-        // Clean up (unhide all elements)
-        ForceShowAllElements();
-
+        // Clean up (unhide all elements & set Opacity to HUDLayout values)
+        RestoreGameOpacity();
         PluginInterface.LanguageChanged -= LanguageChanged;
         Framework.Update -= OnFrameworkUpdate;
         CommandManager.RemoveHandler(CommandName);
@@ -157,6 +156,7 @@ public class Plugin : IDalamudPlugin
         {
             case "t" or "toggle":
                 Enabled = !Enabled;
+                if (!Enabled) RestoreGameOpacity();
                 ChatGui.Print(Enabled ? Language.ChatPluginEnabled : Language.ChatPluginDisabled);
                 break;
             case "on":
@@ -165,6 +165,7 @@ public class Plugin : IDalamudPlugin
                 break;
             case "off":
                 Enabled = false;
+                RestoreGameOpacity();
                 ChatGui.Print(Language.ChatPluginDisabled);
                 break;
             case "":
@@ -196,20 +197,14 @@ public class Plugin : IDalamudPlugin
         if (!IsSafeToWork())
             return;
 
-        var forceShow = !Enabled || Addon.IsHudManagerOpen();
+        var hudOpen = Addon.IsHudManagerOpen();
+        var forceShow = !Enabled || hudOpen;
 
-        if (forceShow)
-        {
-            foreach (var addonName in AddonNameToElement.Keys)
-            {
-                // TODO: Grab HudLayout opacity settings and apply them here once.
-                // Currently you need to swap hudlayouts or do something that causes the game itself to rerender hud elements
-                // in order to get default in-game opacity values again
-                Addon.SetAddonVisibility(addonName, true);
-                FinishingHover[addonName] = false;
-            }
-            return;
-        }
+        if (hudOpen && !HudManagerPrevOpened)
+            RestoreGameOpacity();
+        HudManagerPrevOpened = hudOpen;
+
+        if (forceShow) return;
 
         StateChanged = false;
         UpdateInputStates();
@@ -220,7 +215,7 @@ public class Plugin : IDalamudPlugin
             UpdateAddonOpacity();
             ConfigChanged = false;
         }
-        
+
     }
 
     #region Input & State Management
@@ -513,14 +508,19 @@ public class Plugin : IDalamudPlugin
     }
 
     /// <summary>
-    /// Forces all elements to be visible and fully opaque.
+    /// Forces all elements to be visible and return to using In-Game opacity values.
     /// </summary>
-    private void ForceShowAllElements()
+    private void RestoreGameOpacity()
     {
-        foreach (var addonName in AddonNameToElement.Keys)
+        foreach (var kvp in AddonNameToElement)
         {
-            Addon.SetAddonOpacity(addonName, 1.0f);
+            var addonName = kvp.Key;
+            var savedOpacity = Addon.GetSavedOpacity(addonName);
+            CurrentAlphas[addonName] = savedOpacity;
+            TargetAlphas[addonName] = savedOpacity;
+            Addon.SetAddonOpacity(addonName, savedOpacity);
             Addon.SetAddonVisibility(addonName, true);
+            FinishingHover[addonName] = false;
         }
     }
 
