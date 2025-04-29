@@ -4,7 +4,9 @@ using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using FFXIVClientStructs.FFXIV.Client.Graphics;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
+using FFXIVClientStructs.FFXIV.Client.UI.Misc;
 using FFXIVClientStructs.FFXIV.Component.GUI;
+using Lumina.Misc;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
@@ -19,6 +21,39 @@ public static unsafe class Addon
     private static readonly Dictionary<string, (short X, short Y)> StoredPositions = [];
 
     #region Visibility and Position
+
+    /// <summary>
+    /// Returns the HUD-layout’s saved opacity [0..1] for this addon.
+    /// </summary>
+    public static float GetSavedOpacity(string addonName)
+    {
+        var config = AddonConfig.Instance();
+        if (config == null || config->ModuleData == null)
+            return 1.0f;
+
+        var data = config->ModuleData;
+        var addons = data->HudLayoutConfigEntries;     // 440
+        var layouts = data->HudLayoutNames.Length;     // 4
+        var addonsPerLayout = addons.Length / layouts; // 440/4 = 110
+        var currentLayout = data->CurrentHudLayout;    // 0..3
+        var start = currentLayout * addonsPerLayout;
+        var end = start + addonsPerLayout;
+
+        // Hash our addonNames & find corresponding addon in config
+        var keyString = addonName + "_a";
+        var rawHash = Crc32.Get(keyString);
+        var addonNameHash = ~rawHash;
+        for (var i = start; i < end; i++)
+        {
+            if (!addons[i].HasValue) continue;
+            if (addons[i].AddonNameHash != addonNameHash) continue;
+
+            return addons[i].Alpha / 255f;
+        }
+
+        // fallback if not found (e.g. Chat, since you can't natively adjust its opacity)
+        return 1.0f;
+    }
 
     public static void SetAddonVisibility(string name, bool isVisible)
     {
