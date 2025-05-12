@@ -22,7 +22,6 @@ public enum Element
     CrossHotbar = 11,
     PetHotbar = 12,
     ContextActionHotbar = 13,
-
     Job = 14,
     CastBar = 15,
     ExperienceBar = 16,
@@ -37,7 +36,6 @@ public enum Element
     Chat = 25,
     Minimap = 26,
     Nameplates = 27,
-
     TargetInfo = 28,
     PartyList = 29,
     LimitBreak = 30,
