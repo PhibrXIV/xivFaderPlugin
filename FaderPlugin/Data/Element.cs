@@ -48,6 +48,10 @@ public enum Element
     CosmicExotablet = 37,
     AllianceList1 = 38,
     AllianceList2 = 39,
+    OccultCrescentHud = 40,
+    BozjaHud = 41,
+    EurekaElementalHud = 42,
+    EurekaLogosHud = 43,
 
 }
 
@@ -76,6 +80,10 @@ public static class ElementUtil
             Element.ScenarioGuide => Language.ElementScenarioGuide,
             Element.IslekeepIndex => Language.ElementIslekeepIndex,
             Element.CosmicExotablet => Language.ElementCosmicExotablet,
+            Element.EurekaElementalHud => Language.ElementEurekaElementalHud,
+            Element.EurekaLogosHud => Language.ElementEurekaLogosHud,
+            Element.BozjaHud => Language.ElementBozjaHud,
+            Element.OccultCrescentHud => Language.ElementOccultCrescentHud,
             Element.DutyList => Language.ElementDutyList,
             Element.ServerInfo => Language.ElementServerInformation,
             Element.MainMenu => Language.ElementMainMenu,
@@ -165,6 +173,10 @@ public static class ElementUtil
             Element.ServerInfo => ["_DTR"],
             Element.IslekeepIndex => ["MJIHud"],
             Element.CosmicExotablet => ["WKSHud"],
+            Element.OccultCrescentHud => ["MKDInfo"],
+            Element.BozjaHud => ["MYCInfo"],
+            Element.EurekaElementalHud => ["EurekaElementalHud"],
+            Element.EurekaLogosHud => ["EurekaMagiciteItemAtherList"],
             Element.MainMenu => ["_MainCommand"],
             Element.Chat =>
             [
@@ -244,6 +256,10 @@ public static class ElementUtil
         Element.ServerInfo,
         Element.IslekeepIndex,
         Element.CosmicExotablet,
+        Element.EurekaElementalHud,
+        Element.EurekaLogosHud,
+        Element.BozjaHud,
+        Element.OccultCrescentHud,
         Element.MainMenu,
         Element.Chat,
         Element.Minimap,

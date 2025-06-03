@@ -138,4 +138,19 @@
   <data name="ElementAllianceList2" xml:space="preserve">
     <value />
   </data>
+  <data name="ElementOccultCrescentHud" xml:space="preserve">
+    <value />
+  </data>
+  <data name="ElementBozjaHud" xml:space="preserve">
+    <value />
+  </data>
+  <data name="ElementEurekaElementalHud" xml:space="preserve">
+    <value />
+  </data>
+  <data name="ElementEurekaLogosHud" xml:space="preserve">
+    <value />
+  </data>
+  <data name="ElementExperienceBar" xml:space="preserve">
+    <value />
+  </data>
 </root>
