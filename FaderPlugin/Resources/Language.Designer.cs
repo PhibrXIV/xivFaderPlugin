@@ -124,6 +124,24 @@ namespace faderPlugin.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Alliance List 1.
+        /// </summary>
+        internal static string ElementAllianceList1 {
+            get {
+                return ResourceManager.GetString("ElementAllianceList1", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Alliance List 2.
+        /// </summary>
+        internal static string ElementAllianceList2 {
+            get {
+                return ResourceManager.GetString("ElementAllianceList2", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Cast Bar.
         /// </summary>
         internal static string ElementCastbar {

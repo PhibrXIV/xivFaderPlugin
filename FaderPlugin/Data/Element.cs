@@ -46,6 +46,8 @@ public enum Element
     StatusOther = 35,
     StatusConditional = 36,
     CosmicExotablet = 37,
+    AllianceList1 = 38,
+    AllianceList2 = 39,
 
 }
 
@@ -79,6 +81,8 @@ public static class ElementUtil
             Element.MainMenu => Language.ElementMainMenu,
             Element.TargetInfo => Language.ElementTargetInfo,
             Element.PartyList => Language.ElementPartyList,
+            Element.AllianceList1 => Language.ElementAllianceList1,
+            Element.AllianceList2 => Language.ElementAllianceList2,
             Element.LimitBreak => Language.ElementLimitBreak,
             Element.StatusEnhancements => Language.ElementStatusEnhancements,
             Element.StatusEnfeeblements => Language.ElementStatusEnfeeblements,
@@ -144,6 +148,8 @@ public static class ElementUtil
                 "JobHudRDB0", "JobHudRDB1",
             ],
             Element.PartyList => ["_PartyList"],
+            Element.AllianceList1 => ["_AllianceList1"],
+            Element.AllianceList2 => ["_AllianceList2"],
             Element.LimitBreak => ["_LimitBreak"],
             Element.Parameters => ["_ParameterWidget"],
             Element.Status => ["_Status"],
@@ -244,6 +250,8 @@ public static class ElementUtil
         Element.Nameplates,
         Element.TargetInfo,
         Element.PartyList,
+        Element.AllianceList1,
+        Element.AllianceList2,
         Element.LimitBreak,
         Element.Parameters,
         Element.Status,

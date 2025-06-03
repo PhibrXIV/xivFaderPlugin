@@ -487,4 +487,10 @@ Configuration of the element that was selected first will override the rest.</va
   <data name="ElementCosmicExotablet" xml:space="preserve">
     <value>Cosmic Exotablet</value>
   </data>
+  <data name="ElementAllianceList1" xml:space="preserve">
+    <value>Alliance List 1</value>
+  </data>
+  <data name="ElementAllianceList2" xml:space="preserve">
+    <value>Alliance List 2</value>
+  </data>
 </root>
