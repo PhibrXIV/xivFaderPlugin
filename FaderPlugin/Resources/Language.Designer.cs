@@ -899,6 +899,25 @@ namespace faderPlugin.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Relative Opacity.
+        /// </summary>
+        internal static string SettingsRelativeOpacity {
+            get {
+                return ResourceManager.GetString("SettingsRelativeOpacity", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to If enabled, all plugin opacity values are multiplied by your native HUD-layout opacity.
+        ///E.g., native 60% + plugin 50% → resulting UI at 30%..
+        /// </summary>
+        internal static string SettingsRelativeOpacityTooltip {
+            get {
+                return ResourceManager.GetString("SettingsRelativeOpacityTooltip", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Show.
         /// </summary>
         internal static string SettingsShow {

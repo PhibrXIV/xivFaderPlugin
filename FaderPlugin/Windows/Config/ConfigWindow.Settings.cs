@@ -176,6 +176,7 @@ public partial class ConfigWindow
                     Configuration.EnterTransitionSpeed = 1000.0f / enterTransitionTimeMs;
                     Configuration.Save();
                 }
+
                 //
                 // Exit Transition Time
                 //
@@ -192,6 +193,23 @@ public partial class ConfigWindow
                 if (Helper.SliderFloatDiscrete("##exit_transition_time_ms", ref exitTransitionTimeMs, 10.0f, 2000.0f, 10.0f, "{0:0} ms"))
                 {
                     Configuration.ExitTransitionSpeed = 1000.0f / exitTransitionTimeMs;
+                    Configuration.Save();
+                }
+
+                //
+                // Relative Opacity
+                //
+                ImGui.TableNextRow();
+                ImGui.TableNextColumn();
+                ImGui.TextUnformatted(Language.SettingsRelativeOpacity);
+                ImGuiComponents.HelpMarker(Language.SettingsRelativeOpacityTooltip);
+
+                ImGui.TableNextColumn();
+                ImGui.SetNextItemWidth(-1);
+                var relativeOpacity = Configuration.RelativeOpacity;
+                if (ImGui.Checkbox("##relative_opacity_enabled", ref relativeOpacity))
+                {
+                    Configuration.RelativeOpacity = relativeOpacity;
                     Configuration.Save();
                 }
             }
