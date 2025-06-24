@@ -453,7 +453,7 @@ public class Plugin : IDalamudPlugin
     {
         if (!Config.RelativeOpacity)
             return 1f;
-        
+
 
         return Addon.GetSavedOpacity(addonName);
     }
