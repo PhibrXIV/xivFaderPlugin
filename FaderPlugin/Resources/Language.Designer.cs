@@ -908,8 +908,9 @@ namespace faderPlugin.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to If enabled, all plugin opacity values are multiplied by your native HUD-layout opacity.
-        ///E.g., native 60% + plugin 50% → resulting UI at 30%..
+        ///   Looks up a localized string similar to If enabled, all plugin opacity values are multiplied by your native HUD-layout opacity. 
+        ///This way the Plugin only operates within the bounds of your stock UI.
+        ///E.g., native 60% * plugin 50% → resulting UI at 30%..
         /// </summary>
         internal static string SettingsRelativeOpacityTooltip {
             get {
