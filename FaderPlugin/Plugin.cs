@@ -9,6 +9,7 @@ using Dalamud.IoC;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
 using faderPlugin.Resources;
+using FaderPlugin.Animation;
 using FaderPlugin.Data;
 using FaderPlugin.Windows.Config;
 using FFXIVClientStructs.FFXIV.Component.GUI;
@@ -56,6 +57,11 @@ public class Plugin : IDalamudPlugin
     // Opacity Management
     private readonly Dictionary<string, float> CurrentAlphas = [];
     private readonly Dictionary<string, float> TargetAlphas = [];
+    // smallest possible alpha change
+    private const float AlphaTolerance = 1f / 255f;
+
+    // Tween management
+    private readonly Dictionary<string, Tween> Tweens = [];
 
     // Commands
     private const string CommandName = "/pfader";
@@ -367,6 +373,7 @@ public class Plugin : IDalamudPlugin
             LastNonDefaultEntry.Clear();
         }
 
+        var now = Environment.TickCount64;
         foreach (var addonName in AddonNameToElement.Keys)
         {
             var element = AddonNameToElement[addonName];
@@ -379,24 +386,31 @@ public class Plugin : IDalamudPlugin
 
             TargetAlphas[addonName] = targetAlpha;
 
-            float transitionSpeed;
-            if (Config.FadeOverrides.TryGetValue(element, out var fadeOverride) && fadeOverride.UseCustomFadeTimes)
+            // animation
+            var transitionSpeed = GetTransitionSpeed(element, currentAlpha, targetAlpha);
+            var duration = transitionSpeed > 0f ? (long)((1f / transitionSpeed) * 1000f) : 0L;
+
+            if (duration <= 0)
             {
-                transitionSpeed = (targetAlpha > currentAlpha)
-                    ? fadeOverride.EnterTransitionSpeedOverride
-                    : fadeOverride.ExitTransitionSpeedOverride;
+                CurrentAlphas[addonName] = targetAlpha;
+                Addon.SetAddonOpacity(addonName, targetAlpha);
+                Tweens.Remove(addonName);
             }
             else
             {
-                transitionSpeed = (targetAlpha > currentAlpha)
-                    ? Config.EnterTransitionSpeed
-                    : Config.ExitTransitionSpeed;
-            }
+                if (!Tweens.TryGetValue(addonName, out var tween) || Math.Abs(tween.EndValue - targetAlpha) > AlphaTolerance)
+                {
+                    tween = new Tween(currentAlpha, targetAlpha, now, duration, Easing.Linear);
+                    Tweens[addonName] = tween;
+                }
 
-            // animation
-            currentAlpha = MoveTowards(currentAlpha, targetAlpha, transitionSpeed * (float)Framework.UpdateDelta.TotalSeconds);
-            CurrentAlphas[addonName] = currentAlpha;
-            Addon.SetAddonOpacity(addonName, currentAlpha);
+                var newAlpha = tween.Value(now);
+                CurrentAlphas[addonName] = newAlpha;
+                Addon.SetAddonOpacity(addonName, newAlpha);
+
+                if (tween.IsComplete(now))
+                    Tweens.Remove(addonName);
+            }
 
             // visibility
             var isElementDisabled = Config.DisabledElements.TryGetValue(element, out var disabled) && disabled;
@@ -470,7 +484,7 @@ public class Plugin : IDalamudPlugin
         if (anyAddonHovered)
         {
             var fullAlpha = candidate.Opacity * alphaModifier;
-            if (currentAlpha < fullAlpha - 0.001f)
+            if (currentAlpha < fullAlpha - AlphaTolerance)
             {
                 // override targetAlpha so that current addon doesn't get locked at currentAlpha when another addon is hovered
                 return fullAlpha;
@@ -479,15 +493,18 @@ public class Plugin : IDalamudPlugin
         return targetAlpha;
     }
 
-    /// <summary>
-    /// Smoothly moves current value toward target value.
-    /// </summary>
-    private static float MoveTowards(float current, float target, float maxDelta)
+    private float GetTransitionSpeed(Element element, float currentAlpha, float targetAlpha)
     {
-        // TODO: add easing functions perhaps?
-        if (Math.Abs(target - current) <= maxDelta)
-            return target;
-        return current + Math.Sign(target - current) * maxDelta;
+        if (Config.FadeOverrides.TryGetValue(element, out var fadeOverride) && fadeOverride.UseCustomFadeTimes)
+        {
+            return targetAlpha > currentAlpha
+                ? fadeOverride.EnterTransitionSpeedOverride
+                : fadeOverride.ExitTransitionSpeedOverride;
+        }
+
+        return targetAlpha > currentAlpha
+            ? Config.EnterTransitionSpeed
+            : Config.ExitTransitionSpeed;
     }
 
     /// <summary>
@@ -522,6 +539,7 @@ public class Plugin : IDalamudPlugin
             TargetAlphas[addonName] = savedOpacity;
             Addon.SetAddonOpacity(addonName, savedOpacity);
             Addon.SetAddonVisibility(addonName, true);
+            Tweens.Remove(addonName);
         }
     }
 
@@ -538,7 +556,7 @@ public class Plugin : IDalamudPlugin
         foreach (var kvp in TargetAlphas)
         {
             if (!CurrentAlphas.TryGetValue(kvp.Key, out var currentAlpha) ||
-                Math.Abs(currentAlpha - kvp.Value) > 0.001f)
+                Math.Abs(currentAlpha - kvp.Value) > AlphaTolerance)
             {
                 return false;
             }
