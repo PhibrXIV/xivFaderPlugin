@@ -12,7 +12,7 @@ using faderPlugin.Resources;
 using FaderPlugin.Data;
 using FaderPlugin.Windows.Config;
 using FFXIVClientStructs.FFXIV.Component.GUI;
-using ImGuiNET;
+using Dalamud.Bindings.ImGui;
 using Lumina.Excel;
 using Lumina.Excel.Sheets;
 using System;
@@ -246,7 +246,7 @@ public class Plugin : IDalamudPlugin
         UpdateState(State.GatheringNodeTarget, target?.ObjectKind == ObjectKind.GatheringPoint);
         UpdateState(State.Crafting, Condition[ConditionFlag.Crafting]);
         UpdateState(State.Gathering, Condition[ConditionFlag.Gathering]);
-        UpdateState(State.Mounted, Condition[ConditionFlag.Mounted] || Condition[ConditionFlag.Mounted2]);
+        UpdateState(State.Mounted, Condition[ConditionFlag.Mounted] || Condition[ConditionFlag.RidingPillion]);
 
         var inIslandSanctuary = (TerritorySheet.TryGetRow(ClientState.TerritoryType, out var territory) && territory.TerritoryIntendedUse.RowId == 49);
         UpdateState(State.IslandSanctuary, inIslandSanctuary);
@@ -497,7 +497,7 @@ public class Plugin : IDalamudPlugin
         if (addonPointer == nint.Zero)
             return false;
 
-        var addon = (AtkUnitBase*)addonPointer;
+        var addon = (AtkUnitBase*)addonPointer.Address;
         float posX = addon->GetX();
         float posY = addon->GetY();
         var width = addon->GetScaledWidth(true);
