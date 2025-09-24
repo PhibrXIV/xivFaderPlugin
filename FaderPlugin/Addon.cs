@@ -23,7 +23,8 @@ public static unsafe class Addon
     private static readonly Dictionary<string, (short X, short Y)> StoredPositions = [];
 
     private static readonly HashSet<string> IgnoreHudLayoutSettingAddonNames = [.. ElementUtil.GetAddonName(Element.Job)
-        .Concat(ElementUtil.GetAddonName(Element.CrossHotbar))];
+        .Concat(ElementUtil.GetAddonName(Element.CrossHotbar))
+        .Concat(ElementUtil.GetAddonName(Element.CosmicAnnouncements))];
 
     #region Visibility and Position
 
