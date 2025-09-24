@@ -48,7 +48,7 @@ public static unsafe class Addon
             if (!addons[i].HasValue) continue;
             if (addons[i].AddonNameHash != addonNameHash) continue;
 
-            // all special HudElements that don't have an opacity slider have an alpha of 0. Elements that do have a slider only go down to ~0,1
+            // all special HudElements that don't have an opacity slider have an alpha value of 0. Elements that do have a slider only go down to ~0,1
             if (addons[i].Alpha == 0)
                 return 1.0f;
 
