@@ -1,5 +1,4 @@
 using Dalamud.Game.ClientState.GamePad;
-using FaderPlugin.Data;
 using FFXIVClientStructs.FFXIV.Client.Game.Fate;
 using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using FFXIVClientStructs.FFXIV.Client.Graphics;
@@ -10,7 +9,6 @@ using FFXIVClientStructs.FFXIV.Component.GUI;
 using Lumina.Misc;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Numerics;
 
 namespace FaderPlugin;
