@@ -10,6 +10,7 @@ using FFXIVClientStructs.FFXIV.Component.GUI;
 using Lumina.Misc;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Numerics;
 
 namespace FaderPlugin;
@@ -21,7 +22,8 @@ public static unsafe class Addon
 
     private static readonly Dictionary<string, (short X, short Y)> StoredPositions = [];
 
-    private static readonly HashSet<string> JobAddonNames = [.. ElementUtil.GetAddonName(Element.Job)];
+    private static readonly HashSet<string> JobAddonNames = [.. ElementUtil.GetAddonName(Element.Job)
+        .Concat(ElementUtil.GetAddonName(Element.CrossHotbar))];
 
     #region Visibility and Position
 
