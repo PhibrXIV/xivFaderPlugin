@@ -1,4 +1,5 @@
 using Dalamud.Game.ClientState.GamePad;
+using FaderPlugin.Data;
 using FFXIVClientStructs.FFXIV.Client.Game.Fate;
 using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using FFXIVClientStructs.FFXIV.Client.Graphics;
@@ -20,6 +21,8 @@ public static unsafe class Addon
 
     private static readonly Dictionary<string, (short X, short Y)> StoredPositions = [];
 
+    private static readonly HashSet<string> JobAddonNames = [.. ElementUtil.GetAddonName(Element.Job)];
+
     #region Visibility and Position
 
     /// <summary>
@@ -27,11 +30,14 @@ public static unsafe class Addon
     /// </summary>
     public static float GetSavedOpacity(string addonName)
     {
-        var config = AddonConfig.Instance();
-        if (config == null || config->ModuleData == null)
+        if (JobAddonNames.Contains(addonName))
             return 1.0f;
 
-        var data = config->ModuleData;
+        var config = AddonConfig.Instance();
+        if (config == null || config->ActiveDataSet == null)
+            return 1.0f;
+
+        var data = config->ActiveDataSet;
         var addons = data->HudLayoutConfigEntries;     // 440
         var layouts = data->HudLayoutNames.Length;     // 4
         var addonsPerLayout = addons.Length / layouts; // 440/4 = 110
@@ -50,7 +56,6 @@ public static unsafe class Addon
 
             return addons[i].Alpha / 255f;
         }
-
         // fallback if not found (e.g. Chat, since you can't natively adjust its opacity)
         return 1.0f;
     }
