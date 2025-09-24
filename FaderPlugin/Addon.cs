@@ -22,10 +22,6 @@ public static unsafe class Addon
 
     private static readonly Dictionary<string, (short X, short Y)> StoredPositions = [];
 
-    private static readonly HashSet<string> IgnoreHudLayoutSettingAddonNames = [.. ElementUtil.GetAddonName(Element.Job)
-        .Concat(ElementUtil.GetAddonName(Element.CrossHotbar))
-        .Concat(ElementUtil.GetAddonName(Element.CosmicAnnouncements))];
-
     #region Visibility and Position
 
     /// <summary>
@@ -33,9 +29,6 @@ public static unsafe class Addon
     /// </summary>
     public static float GetSavedOpacity(string addonName)
     {
-        if (IgnoreHudLayoutSettingAddonNames.Contains(addonName))
-            return 1.0f;
-
         var config = AddonConfig.Instance();
         if (config == null || config->ActiveDataSet == null)
             return 1.0f;
@@ -56,6 +49,10 @@ public static unsafe class Addon
         {
             if (!addons[i].HasValue) continue;
             if (addons[i].AddonNameHash != addonNameHash) continue;
+
+            // all special HudElements that don't have a opacity slider have an alpha of 0. Elements that do have a slider only go down to ~0,1
+            if (addons[i].Alpha == 0)
+                return 1.0f;
 
             return addons[i].Alpha / 255f;
         }
