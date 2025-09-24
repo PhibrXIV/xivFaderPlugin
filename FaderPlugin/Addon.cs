@@ -22,7 +22,7 @@ public static unsafe class Addon
 
     private static readonly Dictionary<string, (short X, short Y)> StoredPositions = [];
 
-    private static readonly HashSet<string> JobAddonNames = [.. ElementUtil.GetAddonName(Element.Job)
+    private static readonly HashSet<string> IgnoreHudLayoutSettingAddonNames = [.. ElementUtil.GetAddonName(Element.Job)
         .Concat(ElementUtil.GetAddonName(Element.CrossHotbar))];
 
     #region Visibility and Position
@@ -32,7 +32,7 @@ public static unsafe class Addon
     /// </summary>
     public static float GetSavedOpacity(string addonName)
     {
-        if (JobAddonNames.Contains(addonName))
+        if (IgnoreHudLayoutSettingAddonNames.Contains(addonName))
             return 1.0f;
 
         var config = AddonConfig.Instance();
